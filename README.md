@@ -1,185 +1,203 @@
+**English** · [Türkçe](README.tr.md)
+
 # Logistics & Shipment Tracking System (LST)
 
-Tek bir lojistik işletmesi için gönderi operasyonu ve takip sistemi: gönderi oluşturma, hub taramaları, teslimat denemeleri, istisna
-kuyruğu, simüle carrier entegrasyonu, alıcı için public takip ve canlı güncellenen operasyon paneli.
+A shipment operations and tracking system for a single logistics company: shipment creation, hub scans, delivery attempts, an exception
+queue, a simulated carrier integration, public tracking for recipients, and a live-updating operations dashboard.
 
 - Backend: ASP.NET Core (.NET 10) Minimal API, modular monolith, EF Core + Npgsql, PostgreSQL 18
-- Arayüz: React 19 + TypeScript + Vite, API ile **aynı origin**; canlı güncelleme SignalR
-- Tasarım belgeleri: [`docs/01–09`](docs/) · kararlar: [`docs/adr/`](docs/adr/) · ilerleme ve kanıtlar:
+- UI: React 19 + TypeScript + Vite, **same origin** as the API; live updates over SignalR
+- Design documents: [`docs/01–09`](docs/) · decisions: [`docs/adr/`](docs/adr/) · progress and evidence:
   [`docs/implementation-progress.md`](docs/implementation-progress.md), [`docs/final-verification.md`](docs/final-verification.md)
 
-Proje sahibi: TCoderr
+Project owner: TCoderr
 
-> Bu depo yerel bir demo/portföy uygulamasıdır. Testlerin geçmesi üretim dağıtımı veya trafik kapasitesi sertifikası değildir; yük testi
-> yapılmamıştır ve kapasite iddiası yoktur. Kapsam dışı: çok kiracılı SaaS, rota optimizasyonu, GPS/harita, kısmi teslimat, teslim sonrası
-> müşteri iadesi, gerçek carrier/ödeme/bildirim, AI/LLM özelliği.
+> This repository is a local demo/portfolio application. Passing tests are not a certification of production deployment or traffic capacity; no
+> load testing has been done and no capacity claim is made. Out of scope: multi-tenant SaaS, route optimization, GPS/maps, partial delivery,
+> post-delivery customer returns, real carrier/payment/notification integrations, AI/LLM features.
 
-## Mimari
+## Architecture
 
 ```
-src/Lst.Api                  Host: composition, auth pipeline, health, SPA barındırma, SignalR hub'ı (Realtime/), bakım komutları
-src/Lst.Platform             Tek LogisticsDbContext + migration'lar, idempotency, audit, outbox, rate limit, retention, hub referans verisi
-src/Lst.Modules.Identity     Identity + cookie + antiforgery; her istekte güncel DB rolü/hub ataması
-src/Lst.Modules.Shipments    Gönderi domain'i: durum makinesi, tarama/teslimat/carrier kararları (saf politikalar), liste, detay, public takip
-src/Lst.Modules.Operations   İstisna kuyruğu, SLA izleyici, KPI özeti, audit okuma
-src/Lst.Modules.Tracking     Carrier webhook (HMAC), kalıcı inbox + işleyici, SIMEX simülatörü (yalnız Development)
-src/web                      React SPA (operasyon paneli + mobil public takip), bileşen testleri, Playwright E2E
-tests/Lst.UnitTests          Saf domain/politika ve mimari sınır testleri
-tests/Lst.IntegrationTests   Gerçek PostgreSQL 18 (Testcontainers) + WebApplicationFactory
-scripts/                     Yerel yığın, duman testi, migration doğrulaması, lisans bildirimi, kaynak parmak izi
+src/Lst.Api                  Host: composition, auth pipeline, health, SPA hosting, SignalR hub (Realtime/), maintenance commands
+src/Lst.Platform             Single LogisticsDbContext + migrations, idempotency, audit, outbox, rate limiting, retention, hub reference data
+src/Lst.Modules.Identity     Identity + cookie + antiforgery; current DB role/hub assignment on every request
+src/Lst.Modules.Shipments    Shipment domain: state machine, scan/delivery/carrier decisions (pure policies), list, detail, public tracking
+src/Lst.Modules.Operations   Exception queue, SLA monitor, KPI summary, audit reads
+src/Lst.Modules.Tracking     Carrier webhook (HMAC), durable inbox + processor, SIMEX simulator (Development only)
+src/web                      React SPA (operations dashboard + mobile public tracking), component tests, Playwright E2E
+tests/Lst.UnitTests          Pure domain/policy and architecture boundary tests
+tests/Lst.IntegrationTests   Real PostgreSQL 18 (Testcontainers) + WebApplicationFactory
+scripts/                     Local stack, smoke test, migration verification, license notices, source fingerprint
 ```
 
-Modüller tek veritabanında ayrı şemalar kullanır (`shipments`, `operations`, `tracking`, `identity`, `platform`). Broker, Redis, MediatR,
-generic repository, event sourcing ve AutoMapper yoktur.
+Modules use separate schemas within a single database (`shipments`, `operations`, `tracking`, `identity`, `platform`). There is no broker, Redis,
+MediatR, generic repository, event sourcing or AutoMapper.
 
-### Bir gönderinin akışı
+### The flow of a shipment
 
-1. **Oluşturma** (`POST /api/shipments`, OpsAgent/OpsManager): `Idempotency-Key` zorunlu. Gönderi + taraflar + koliler + `Created` olayı + audit +
-   outbox mesajı tek transaction'da yazılır. Aynı anahtar + aynı gövde ilk yanıtı **byte düzeyinde aynen** döner; farklı gövde `422`.
-2. **Hub taramaları** (`POST /api/hubs/{hub}/scans`, yalnız o hub'a atanmış HubOperator): varış → çıkış → varış hub'ında dağıtıma çıkış.
-   Kararı saf `ScanPolicy` verir (Applied / Duplicate / Stale / Rejected); kolilerin hepsi hub'da değilken çıkış reddedilir.
-3. **Teslimat denemesi** (idempotent): teslim edildi ya da başarısız (neden zorunlu). Başarısızlık istisna açar; 3 deneme sonunda hak biter.
-4. **İstisna kuyruğu**: görevli üzerine alır ve çözer (ek deneme onayı, göndericiye iade, işlem gerekmiyor …). Durum değiştiren çözüm,
-   gönderi komutuyla aynı transaction'dadır.
-5. **Carrier olayları**: imzalı webhook → kalıcı makbuz (`202`) → inbox işleyicisi (lease + fencing) → Applied / Duplicate / Stale /
-   Rejected / PendingReview. Aynı kimlik farklı içerik = çakışma kaydı + istisna.
-6. **Outbox**: durum/istisna değişiklikleri commit sonrası dağıtılır (simüle bildirim kaydı + canlı panel ipucu).
-7. **Public takip** (`/t/{kod}`): alıcı oturumsuz, yalnız allowlist alanlarını görür (ad, adres, telefon, hub kodu yok).
+1. **Creation** (`POST /api/shipments`, OpsAgent/OpsManager): `Idempotency-Key` is required. The shipment + parties + packages + `Created` event +
+   audit + outbox message are written in a single transaction. The same key + the same body returns the first response **byte for byte**; a
+   different body returns `422`.
+2. **Hub scans** (`POST /api/hubs/{hub}/scans`, only a HubOperator assigned to that hub): arrival → departure → out for delivery at the
+   destination hub. The decision is made by the pure `ScanPolicy` (Applied / Duplicate / Stale / Rejected); departure is rejected while not all
+   packages are at the hub.
+3. **Delivery attempt** (idempotent): delivered or failed (reason required). A failure opens an exception; after 3 attempts the allowance is
+   used up.
+4. **Exception queue**: an agent claims it and resolves it (approve an extra attempt, return to sender, no action needed …). A resolution that
+   changes the status runs in the same transaction as the shipment command.
+5. **Carrier events**: signed webhook → durable receipt (`202`) → inbox processor (lease + fencing) → Applied / Duplicate / Stale /
+   Rejected / PendingReview. Same ID with different content = conflict record + exception.
+6. **Outbox**: status/exception changes are dispatched after commit (simulated notification record + live dashboard hint).
+7. **Public tracking** (`/t/{code}`): the recipient, without a session, sees only allowlisted fields (no name, address, phone or hub code).
 
-Eşzamanlılık: operatör komutları `If-Match` (ETag = satır sürümü) ister; durum değiştiren her komut gönderi satırını kilitler.
+Concurrency: operator commands require `If-Match` (ETag = row version); every status-changing command locks the shipment row.
 
-## Ön koşullar
+## Prerequisites
 
 - .NET SDK 10.0.4xx (`global.json`: 10.0.401) · `dotnet tool restore` (dotnet-ef)
-- Docker Desktop (PostgreSQL 18 konteyneri, Testcontainers, Compose yığını)
-- Node.js ≥ 22.12 (geliştirme ve testler için; image içindeki build kendi Node'unu kullanır)
-- E2E için Chrome ya da `npx playwright install chromium`
+- Docker Desktop (PostgreSQL 18 container, Testcontainers, Compose stack)
+- Node.js ≥ 22.12 (for development and tests; the build inside the image uses its own Node)
+- For E2E: Chrome or `npx playwright install chromium`
 
-## Yerelde çalıştırma (önerilen: Docker Compose, HTTPS)
+## Running locally (recommended: Docker Compose, HTTPS)
 
 ```powershell
-# 1) Bir kez: rastgele secret'lar, geliştirici sertifikası dışa aktarımı ve demo kullanıcı parolaları üretilir (.local/ altında, git dışı)
+# 1) Once: creates random secrets, the developer certificate export and demo user passwords (under .local/, outside git)
 .\scripts\local-stack.ps1 init -SeedDemo
 
-# 2) Image'ı derle ve yığını başlat (PostgreSQL 18 + tek seferlik migrator + HTTPS API + arayüz). -Simulation: carrier simülatörü
+# 2) Build the image and start the stack (PostgreSQL 18 + one-shot migrator + HTTPS API + UI). -Simulation: carrier simulator
 .\scripts\local-stack.ps1 up -SeedDemo -Simulation
 
-# 3) Tarayıcı: https://localhost:8443   (geliştirici sertifikası güvenilir değilse bir kez: dotnet dev-certs https --trust)
+# 3) Browser: https://localhost:8443   (if the developer certificate is not trusted, once: dotnet dev-certs https --trust)
 
 .\scripts\local-stack.ps1 status
-.\scripts\local-stack.ps1 down            # durdurur; veriler kalır
-.\scripts\local-stack.ps1 down -Purge     # yalnız bu projenin volume'larını da siler
+.\scripts\local-stack.ps1 down            # stops the stack; data is kept
+.\scripts\local-stack.ps1 down -Purge     # also deletes the volumes of this project only
 ```
 
-Linux/macOS/Git Bash eşdeğeri: `bash scripts/ci-e2e-stack.sh .local lst 8443`.
+Linux/macOS/Git Bash equivalent: `bash scripts/ci-e2e-stack.sh .local lst 8443`.
 
-### Demo kullanıcıları ve parolalar
+### Demo users and passwords
 
-Depoda **parola yoktur** ve hiçbir komut parolayı ekrana yazmaz. `init -SeedDemo` her kullanıcı için rastgele bir parola üretir ve
-`.local/seed/Seed__Passwords__<kullanıcı>` dosyasına yazar; parolayı bu dosyadan okursunuz (ya da dosyayı kendi parolanızla **yığını ilk kez
-başlatmadan önce** değiştirirsiniz: en az 12 karakter, büyük/küçük harf, rakam, sembol).
+There are **no passwords** in the repository, and no command prints a password to the screen. `init -SeedDemo` creates a random password for
+each user and writes it to `.local/seed/Seed__Passwords__<user>`; you read the password from that file (or you replace the file with your own
+password **before starting the stack for the first time**: at least 12 characters, upper/lowercase letters, a digit, a symbol).
 
-| Kullanıcı | Rol | Hub | Arayüzde görebildiği |
+| User | Role | Hub | What they can see in the UI |
 |---|---|---|---|
-| `ops.agent` | Operasyon görevlisi | — | Gönderiler, oluşturma, işlemler, istisnalar, özet |
-| `ops.manager` | Operasyon yöneticisi | — | + takip kodu yenileme, audit, carrier simülasyonu (Demo) |
-| `hub.ist` / `hub.ank` / `hub.izm` | Hub görevlisi | IST-01 / ANK-02 / IZM-01 | Tarama, kendi hub kapsamındaki gönderiler |
+| `ops.agent` | Operations agent | — | Shipments, creation, actions, exceptions, summary |
+| `ops.manager` | Operations manager | — | + tracking code regeneration, audit, carrier simulation (Demo) |
+| `hub.ist` / `hub.ank` / `hub.izm` | Hub operator | IST-01 / ANK-02 / IZM-01 | Scanning, shipments within their own hub's scope |
 
-Demo verisi yalnız `Development` ortamında ve açık istekle (`-SeedDemo`) oluşturulur; demo gönderi yoktur, gönderileri arayüzden oluşturursunuz.
-Simülatör paneli yalnız `Development` + `-Simulation` + yönetici rolüyle görünür; Production'da route yoktur.
+Demo data is created only in the `Development` environment and on explicit request (`-SeedDemo`); there are no demo shipments, you create
+shipments from the UI. The simulator panel is visible only with `Development` + `-Simulation` + the manager role; in Production the route does
+not exist.
 
-### Örnek demo turu
+### Sample demo tour
 
-`ops.manager` ile gönderi oluşturun → detayda **Carrier ata** (SIMEX) → **Carrier simülasyonu** `HappyPath` → durum yenilemeden "Teslim edildi"ye
-ilerler. Ya da ikinci bir tarayıcıda `hub.ist` ile **Tarama** ekranından koli etiketini okutun; ilk tarayıcıdaki liste canlı güncellenir.
-Alıcı görünümü: detaydaki **Public takip sayfasını aç** bağlantısı.
+UI labels below are quoted as they appear on screen (the UI is in Turkish), with an English gloss in parentheses.
 
-## Geliştirme (API + Vite)
+Create a shipment as `ops.manager` → on the detail page, **Carrier ata** (assign carrier; SIMEX) → **Carrier simülasyonu** (carrier simulation)
+`HappyPath` → the status advances to "Teslim edildi" (delivered) without a refresh. Or, in a second browser, scan the package label from the
+**Tarama** (scan) screen as `hub.ist`; the list in the first browser updates live.
+Recipient view: the **Public takip sayfasını aç** (open the public tracking page) link on the detail page.
+
+## Development (API + Vite)
 
 ```powershell
 dotnet tool restore
 dotnet dev-certs https --trust
-# Bağlantı dizesi ve demo parolaları user-secrets'ta tutulur (repoda gizli bilgi yoktur):
-dotnet user-secrets --project src/Lst.Api set "ConnectionStrings:Lst" "Host=localhost;Port=5432;Database=lst_dev;Username=<kullanıcı>;Password=<parola>"
-dotnet user-secrets --project src/Lst.Api set "Seed:Passwords:ops.agent" "<parola>"      # diğer kullanıcılar için de
+# The connection string and demo passwords are kept in user-secrets (there are no secrets in the repo):
+dotnet user-secrets --project src/Lst.Api set "ConnectionStrings:Lst" "Host=localhost;Port=5432;Database=lst_dev;Username=<user>;Password=<password>"
+dotnet user-secrets --project src/Lst.Api set "Seed:Passwords:ops.agent" "<password>"    # and the same for the other users
 dotnet run --project src/Lst.Api --launch-profile https                                  # https://localhost:7210 (Development: migration + seed)
 
 cd src/web
 npm ci
-npm run dev                                                                              # http://localhost:5173, /api ve /realtime API'ye proxy'lenir
+npm run dev                                                                              # http://localhost:5173; /api and /realtime are proxied to the API
 ```
 
-Vite proxy'si cookie ve CSRF başlıklarını değiştirmeden taşır; cookie'ler `__Host-` önekli ve `Secure` olduğundan dev sunucusu Chromium/Firefox'ta
-`http://localhost` üzerinden çalışır. Derlenmiş arayüzü API'den sunmak için: `npm run build` ve `Spa:DistPath=../web/dist`.
+The Vite proxy carries cookies and CSRF headers through unchanged; because the cookies are `__Host-`-prefixed and `Secure`, the dev server works
+over `http://localhost` in Chromium/Firefox. To serve the built UI from the API: `npm run build` and `Spa:DistPath=../web/dist`.
 
-Kimlik akışı: `GET /api/auth/csrf` → `POST /api/auth/login` (`X-CSRF-TOKEN`) → `GET /api/auth/me` (kullanıcıya bağlı yeni token) → durum değiştiren her
-istekte `X-CSRF-TOKEN`. Elle deneme: [`requests/shipments.http`](requests/shipments.http).
+Auth flow: `GET /api/auth/csrf` → `POST /api/auth/login` (`X-CSRF-TOKEN`) → `GET /api/auth/me` (a new token bound to the user) → `X-CSRF-TOKEN` on
+every status-changing request. For manual testing: [`requests/shipments.http`](requests/shipments.http).
 
-## Testler ve doğrulama
+## Tests and verification
 
 ```powershell
 dotnet build Lst.slnx -c Release
 dotnet test --project tests/Lst.UnitTests/Lst.UnitTests.csproj -c Release
-dotnet test --project tests/Lst.IntegrationTests/Lst.IntegrationTests.csproj -c Release   # gerçek PostgreSQL 18 (Testcontainers); Docker yoksa HATA verir, atlanmaz
+dotnet test --project tests/Lst.IntegrationTests/Lst.IntegrationTests.csproj -c Release   # real PostgreSQL 18 (Testcontainers); without Docker it FAILS, it is not skipped
 
 cd src/web
 npm run typecheck; npm run lint; npm run test; npm run build
 
-# E2E: ayrı, izole yığın (ayrı proje adı, volume ve secret'lar) + gerçek tarayıcı
+# E2E: a separate, isolated stack (its own project name, volumes and secrets) + a real browser
 ..\..\scripts\local-stack.ps1 init -LocalDir .local-e2e -SeedDemo
 ..\..\scripts\local-stack.ps1 up -Project lst-e2e -LocalDir .local-e2e -Port 18443 -SeedDemo -Simulation
 $env:LST_E2E_CHANNEL = "chrome"; npm run e2e
 ..\..\scripts\local-stack.ps1 down -Project lst-e2e -LocalDir .local-e2e -Purge
 ```
 
-Diğer doğrulama betikleri (depo kökünden):
+Other verification scripts (from the repository root):
 
-| Betik | Ne yapar |
+| Script | What it does |
 |---|---|
-| `python scripts/stack_smoke.py --project <p> --local-dir <dir> --port <port>` | HTTPS cookie/CSRF create → replay → detay; çalışma zamanı rolünün audit'i değiştirememesi; API yeniden oluşturma; DB kesintisi/iyileşme |
-| `python scripts/migration_upgrade_check.py` | Boş DB kurulumu + önceki dilim şemalarından verili yükseltme (tek kullanımlık konteyner) |
-| `python scripts/third_party_notices.py` | `THIRD-PARTY-NOTICES.md` ve arayüzle dağıtılan lisans metinlerini yeniden üretir |
-| `scripts/source-fingerprint.ps1` | Kaynak durumunun parmak izi (git yokken sonuçların hangi kaynağa ait olduğunu kaydetmek için) |
+| `python scripts/stack_smoke.py --project <p> --local-dir <dir> --port <port>` | HTTPS cookie/CSRF create → replay → detail; the runtime role being unable to modify the audit trail; recreating the API; DB outage/recovery |
+| `python scripts/migration_upgrade_check.py` | Empty-DB install + upgrade with data from the schemas of previous slices (disposable container) |
+| `python scripts/third_party_notices.py` | Regenerates `THIRD-PARTY-NOTICES.md` and the license texts shipped with the UI |
+| `scripts/source-fingerprint.ps1` | Fingerprint of the source state (to record which source the results belong to when there is no git) |
 
-CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — `backend`, `web`, `e2e` işleri (yalnız `contents: read`, action'lar commit SHA ile sabit).
-**Bu workflow uzak depoda çalıştırılmamıştır**; yereldeki eşdeğer komutların sonuçları `docs/final-verification.md`'dedir.
+CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — `backend`, `web`, `e2e` jobs (`contents: read` only, actions pinned by commit SHA).
+Remote runs: [GitHub Actions](https://github.com/TCoderr/logistics-shipment-tracking/actions). As of 2026-10-12 (UTC+3), the first remote run
+(commit `d9ad35b`) **failed** in the `e2e` job and fixes are in progress; no passing remote run is claimed here, and the Actions page shows the
+current state. The results of the equivalent local commands are in `docs/final-verification.md`; they are not remote CI results.
 
-## Migration
+The results and fingerprints in `docs/final-verification.md` belong to the source state that was used during the local verification. That
+document was written before the repository was pushed; its "remote CI was not run" statements describe that moment. The later translation of
+this README into English (`README.md` in English, the Turkish text in `README.tr.md`) is a documentation-only change. Because the fingerprint
+script also covers these files, the fingerprint of the current tree is not the same as the recorded values; the tests were not re-run after the
+translation, and the recorded results are not results obtained on the current fingerprint.
 
-Üretimde uygulama başlarken otomatik migration **yapılmaz**. Migration'ı tablo sahibi rol uygular; uygulama, yalnız
-[`db/runtime-role-grants.sql`](db/runtime-role-grants.sql) yetkilerine sahip **ayrı** bir rolle bağlanır (DDL yok; audit tablosunda yalnız `SELECT, INSERT`).
+## Migrations
+
+In production, migrations are **not** applied automatically when the application starts. The table-owner role applies the migration; the
+application connects with a **separate** role that has only the grants in [`db/runtime-role-grants.sql`](db/runtime-role-grants.sql) (no DDL; only
+`SELECT, INSERT` on the audit table).
 
 ```powershell
 dotnet ef migrations has-pending-model-changes -p src/Lst.Platform -s src/Lst.Api
-dotnet ef migrations script --idempotent -p src/Lst.Platform -s src/Lst.Api -o migrate.sql   # incelenip sahip rolle uygulanır
-# Compose yığınında aynı iş: tek seferlik "migrator" servisi (image'ın --migrate komutu)
+dotnet ef migrations script --idempotent -p src/Lst.Platform -s src/Lst.Api -o migrate.sql   # reviewed, then applied with the owner role
+# In the Compose stack the same job is done by the one-shot "migrator" service (the image's --migrate command)
 ```
 
-## Hata, yeniden deneme ve saklama davranışı
+## Failure, retry and retention behavior
 
-| Durum | Davranış |
+| Situation | Behavior |
 |---|---|
-| Yanıt kayboldu (create / teslimat denemesi) | Aynı `Idempotency-Key` ile tekrar: ilk yanıt aynen döner, ikinci kayıt oluşmaz. Arayüz aynı gövdeyi aynı anahtarla yeniden gönderir; alan değişirse yeni işlem sayar ve uyarır |
-| Eski ekran (`If-Match` uyuşmadı) | `412`; arayüz güncel durumu yükler, yazılan metni korur |
-| Carrier olayı tekrar / sırasız / çelişkili | Duplicate / Stale (zaman çizelgesinde görünür, durumu geri sarmaz) / PendingReview veya çakışma → istisna |
-| Inbox işleyicisi çöktü | Lease dolunca başka işçi devralır; eski işçi sonucu yazamaz (fencing). Geçici DB hatası deneme bütçesini tüketmez; kalıcı hata 5 denemede dead-letter |
-| Outbox teslimi başarısız | Geri çekilerek yeniden dener; 8 denemede dead-letter. Yönetici `GET /api/operations/outbox`, `POST …/{id}/replay` (audit'li) |
-| Canlı bağlantı koptu | Şerit "yeniden bağlanılıyor / veri bayat olabilir" der; bağlanınca etkin sorgular sunucudan yeniden okunur (mesaj kaçsa da veri doğrudur) |
-| Veritabanı kesintisi | `/health/live` 200, `/health/ready` 503; iyileşince kendiliğinden toparlanır |
-| Saklama (demo varsayımı, **yasal uygunluk kanıtı değildir**) | 180 günü geçmiş tamamlanmış gönderilerde PII maskelenir; ham carrier payload'ı 30 gün; işlenmiş outbox 7 gün. Elle: `POST /api/operations/retention/run` |
+| Response lost (create / delivery attempt) | Retry with the same `Idempotency-Key`: the first response is returned as is and no second record is created. The UI resends the same body with the same key; if a field changes, it counts as a new operation and the UI warns |
+| Stale screen (`If-Match` mismatch) | `412`; the UI loads the current state and keeps the text already typed |
+| Carrier event repeated / out of order / contradictory | Duplicate / Stale (visible in the timeline, does not roll the status back) / PendingReview or conflict → exception |
+| Inbox processor crashed | When the lease expires another worker takes over; the old worker cannot write its result (fencing). A transient DB error does not consume the attempt budget; a permanent error is dead-lettered after 5 attempts |
+| Outbox delivery failed | Retries with backoff; dead-lettered after 8 attempts. Manager: `GET /api/operations/outbox`, `POST …/{id}/replay` (audited) |
+| Live connection dropped | The banner says "reconnecting / data may be stale"; once reconnected, active queries are re-read from the server (the data is correct even if a message was missed) |
+| Database outage | `/health/live` 200, `/health/ready` 503; recovers on its own once the database is back |
+| Retention (demo assumption, **not evidence of legal compliance**) | PII is masked on completed shipments older than 180 days; raw carrier payloads 30 days; processed outbox 7 days. Manual: `POST /api/operations/retention/run` |
 
-## Bilinen sınırlar
+## Known limitations
 
-- **Tek instance:** rate limit sayaçları, SignalR grupları ve bağlantı kaydı bellek içidir (backplane/Redis yok).
-- **Canlı kanal** yalnız durum ve istisna aç/ata/çöz değişikliklerinde ipucu üretir; diğer değişiklikler 60 sn'lik mutabakat veya elle yenilemeyle görünür.
-  Yetkisi kaldırılan açık bağlantının iptali anlık değildir (varsayılan ≤ 15 sn).
-- **Durumsuz cookie:** çıkış sunucuda bileti iptal etmez; kopyalanmış bir cookie süresi dolana kadar (8 saat, kayan) geçerlidir.
-- Kullanıcı/rol/hub ataması yönetim ekranı ve OIDC yoktur; demo kullanıcıları seed ile gelir.
-- `return-to-sender` nedeni doğrulanır ama saklanmaz (serbest metin audit'e yazılmaz).
-- Carrier yalnız simülasyondur (SIMEX); gerçek dış servis çağrısı ve gerçek bildirim gönderimi yoktur.
-- Değişiklik akışı (`changes?after=`) bilinçli olarak yoktur ([ADR-020](docs/adr/ADR-020-realtime-invalidation-and-resync.md)).
-- Performans/kapasite ölçülmedi.
+- **Single instance:** rate limit counters, SignalR groups and the connection registry are in memory (no backplane/Redis).
+- **Live channel** produces hints only for status changes and exception open/assign/resolve changes; other changes become visible through the
+  60-second reconciliation or a manual refresh. Cutting off an open connection whose authorization has been removed is not instant (default ≤ 15 s).
+- **Stateless cookie:** logout does not revoke the ticket on the server; a copied cookie stays valid until it expires (8 hours, sliding).
+- There is no management screen for user/role/hub assignment and no OIDC; demo users come from the seed.
+- The `return-to-sender` reason is validated but not stored (free text is not written to the audit trail).
+- The carrier is simulation only (SIMEX); there are no real external service calls and no real notification delivery.
+- A change feed (`changes?after=`) is deliberately absent ([ADR-020](docs/adr/ADR-020-realtime-invalidation-and-resync.md)).
+- Performance/capacity has not been measured.
 
-## Lisans
+## License
 
-Proje için henüz bir lisans seçilmedi. Dağıtılan üçüncü taraf bileşenler ve lisansları: [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+No license has been chosen for the project yet. Distributed third-party components and their licenses: [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).

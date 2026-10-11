@@ -24,7 +24,10 @@ if (!root) throw new Error("#root bulunamadı");
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      {/* Konum güncellemeleri geçişe (startTransition) ertelenmez: filtreler ve arama URL'ye bağlı kontrollü girdilerdir;
+          ertelenirse tıklanan kutu geri alınır, art arda gelen filtre değişiklikleri birbirini ezer ve liste klavye odağının
+          altından sonradan değişir. setSearchParams'ın flushSync seçeneği BrowserRouter'da etkisizdir. */}
+      <BrowserRouter useTransitions={false}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>

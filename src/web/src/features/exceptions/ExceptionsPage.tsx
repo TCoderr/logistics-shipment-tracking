@@ -120,7 +120,7 @@ export function ExceptionsPage() {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
-    setParams(next, { flushSync: true });
+    setParams(next);
   };
 
   const afterChange = async () => {

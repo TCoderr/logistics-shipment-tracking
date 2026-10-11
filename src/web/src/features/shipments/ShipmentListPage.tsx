@@ -189,8 +189,8 @@ export function ShipmentListPage() {
   const update = (change: (next: URLSearchParams) => void) => {
     const next = new URLSearchParams(params);
     change(next);
-    // Eşzamanlı: kontrollü filtre kontrolleri tıklamayla aynı anda güncellenir (geçişe ertelenmez).
-    setParams(next, { flushSync: true });
+    // Eşzamanlı: kontrollü filtre kontrolleri tıklamayla aynı anda güncellenir (yönlendirici geçiş kullanmaz, bkz. main.tsx).
+    setParams(next);
   };
   const setParam = (key: string, value: string | null) =>
     update((next) => {
@@ -254,7 +254,7 @@ export function ShipmentListPage() {
   if (view.from) chips.push({ key: "from", label: `Oluşturma ≥ ${formatBusinessDate(view.from)}`, clear: () => setParam("from", null) });
   if (view.to) chips.push({ key: "to", label: `Oluşturma ≤ ${formatBusinessDate(view.to)}`, clear: () => setParam("to", null) });
   const hasFilters = chips.length > 0;
-  const clearAll = () => setParams(filters.sort ? new URLSearchParams({ sort: filters.sort }) : new URLSearchParams(), { flushSync: true });
+  const clearAll = () => setParams(filters.sort ? new URLSearchParams({ sort: filters.sort }) : new URLSearchParams());
 
   const validation = list.error instanceof ApiError && list.error.code === "validation" ? list.error.fieldErrors : null;
   const cursorProblem = list.error instanceof ApiError && (list.error.code === "invalid-cursor" || list.error.code === "cursor-mismatch");
