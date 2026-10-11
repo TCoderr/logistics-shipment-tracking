@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>Lst.Api</RootNamespace>
+    <UserSecretsId>lst-api-dev</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lst.IntegrationTests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Lst.Platform\Lst.Platform.csproj" />
+    <ProjectReference Include="..\Lst.Modules.Identity\Lst.Modules.Identity.csproj" />
+    <ProjectReference Include="..\Lst.Modules.Shipments\Lst.Modules.Shipments.csproj" />
+    <ProjectReference Include="..\Lst.Modules.Operations\Lst.Modules.Operations.csproj" />
+    <ProjectReference Include="..\Lst.Modules.Tracking\Lst.Modules.Tracking.csproj" />
+  </ItemGroup>
+</Project>

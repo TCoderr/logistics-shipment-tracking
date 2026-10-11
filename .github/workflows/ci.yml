@@ -1,0 +1,169 @@
+# LST CI: backend (build, unit, integration, EF model/migration, Docker image), web (typecheck, lint, bileşen testleri, build)
+# ve izole Compose yığınına karşı gerçek tarayıcı E2E.
+# Dış servis, publish veya deploy yok. Action'lar resmi depolardan, tam commit SHA ile sabitlenmiştir (yorumda sürüm).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore (locked)
+        run: |
+          dotnet tool restore
+          dotnet restore Lst.slnx --locked-mode
+
+      - name: Build (Release, warnings as errors)
+        run: dotnet build Lst.slnx -c Release --no-restore
+
+      - name: Unit tests
+        run: >
+          dotnet test --project tests/Lst.UnitTests/Lst.UnitTests.csproj -c Release --no-build
+          --report-xunit-trx --report-xunit-junit --results-directory artifacts/test-results/unit
+
+      - name: Integration tests (PostgreSQL 18 via Testcontainers)
+        run: >
+          dotnet test --project tests/Lst.IntegrationTests/Lst.IntegrationTests.csproj -c Release --no-build
+          --report-xunit-trx --report-xunit-junit --results-directory artifacts/test-results/integration
+
+      - name: EF model has no pending changes
+        run: dotnet ef migrations has-pending-model-changes -p src/Lst.Platform -s src/Lst.Api --no-build --configuration Release
+
+      - name: Idempotent migration script
+        run: dotnet ef migrations script --idempotent -p src/Lst.Platform -s src/Lst.Api --no-build --configuration Release -o artifacts/migrations/migrate.sql
+
+      - name: Docker image build
+        run: docker build --pull -t lst-api:ci .
+
+      - name: Upload test results and migration script
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-results
+          path: |
+            artifacts/test-results/**/*.trx
+            artifacts/test-results/**/*.xml
+            artifacts/migrations/migrate.sql
+          retention-days: 7
+          if-no-files-found: warn
+
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install (lockfile)
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Component tests
+        run: npm run test
+
+      - name: Production build
+        run: npm run build
+
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: [backend, web]
+    env:
+      LST_E2E_BASE_URL: https://localhost:18443
+      LST_E2E_SEED_DIR: ${{ github.workspace }}/.local-e2e/seed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET (dev sertifikası dışa aktarımı için)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install web dependencies and browser
+        working-directory: src/web
+        run: |
+          npm ci --no-audit --no-fund
+          node node_modules/@playwright/test/cli.js install --with-deps chromium
+
+      # Ayrı proje adı, ayrı volume, rastgele secret'lar; değerler log'a yazılmaz.
+      - name: Start isolated stack (PostgreSQL 18 + migrator + HTTPS API + SPA)
+        run: bash scripts/ci-e2e-stack.sh .local-e2e lst-e2e 18443
+
+      - name: E2E (gerçek tarayıcı, gerçek API)
+        working-directory: src/web
+        run: npm run e2e
+
+      # Trace ve video kapalıdır: rapor yalnız adım adlarını, hata ekran görüntülerini ve sentetik veriyi içerir
+      # (cookie, CSRF token'ı, parola veya ağ gövdesi içermez). .local-e2e hiçbir koşulda yüklenmez.
+      - name: Upload E2E report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-report
+          path: |
+            src/web/playwright-report/
+            src/web/test-results/junit.xml
+            src/web/test-results/screens/
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Stop stack and remove its volumes
+        if: always()
+        run: docker compose -p lst-e2e down -v --remove-orphans
+        env:
+          LST_LOCAL_DIR: ./.local-e2e

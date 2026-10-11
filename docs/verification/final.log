@@ -1,0 +1,136 @@
+# Final dogrulama - 2026-10-10T11:54:52Z
+# Ortam: 10.0.401 | node v24.18.0 | docker 29.8.2 | chrome 155.0.8059.40
+
+== kaynak parmak izi (baslangic)
+files=271 sha256=12f95652b368e39faad62f99514d872bd44d9899014917077b66d0f3c5cb9408
+
+== F1 tool restore
+Geri yükleme başarılı oldu.
+exit=0
+
+== F1 locked restore
+lock-errors=0
+exit=0
+
+== F1 build Release
+    0 Hata
+    0 Uyarı
+exit=0
+
+== F3 pending model
+No changes have been made to the model since the last migration.
+exit=0
+
+== F3 idempotent script
+exit=0
+migrate.sql bytes=54310
+
+== F2 unit
+D:\Logistics & Shipment Tracking System\logistics-shipment-tracking\tests\Lst.UnitTests\bin\Release\net10.0\Lst.UnitTests.dll (net10.0|x64) başarılı (620ms)
+Test çalıştırması özeti: Başarılı!
+  toplam: 169
+  başarısız oldu: 0
+  başarılı: 169
+  atlandı: 0
+exit=0
+
+== F2 integration (PostgreSQL 18.6, Testcontainers)
+D:\Logistics & Shipment Tracking System\logistics-shipment-tracking\tests\Lst.IntegrationTests\bin\Release\net10.0\Lst.IntegrationTests.dll (net10.0|x64) başarılı (29s 801ms)
+Test çalıştırması özeti: Başarılı!
+  toplam: 133
+  başarısız oldu: 0
+  başarılı: 133
+  atlandı: 0
+exit=0
+
+== F1 web: npm ci
+added 259 packages in 4s
+exit=0
+
+== F1 web: typecheck
+exit=0
+
+== F1 web: lint
+npm notice run node node_modules/eslint/bin/eslint.js . --max-warnings 0
+exit=0
+
+== F2 web: component tests
+ Test Files  8 passed (8)
+      Tests  45 passed (45)
+exit=0
+
+== F1 web: production build
+dist/index.html                   0.66 kB │ gzip:   0.40 kB
+dist/assets/index-Dt42FGAU.css   18.65 kB │ gzip:   4.52 kB
+dist/assets/index-Vyd5AWNM.js   456.48 kB │ gzip: 135.47 kB
+✓ built in 593ms
+exit=0
+
+== F3 migration: bos DB kurulumu + onceki dilimlerden yukseltme
+exit=0
+{"checks": 16, "passed": 16}
+
+== F4 temiz izole yigin (lst-final, .local-final, port 18445)
+Haz�r: .local-final (secrets, certs, seed). De�erler ekrana yaz�lmad�.
+up exit=0
+api state=running health=healthy exit=0
+migrator state=exited health= exit=0
+postgres state=running health=healthy exit=0
+
+== F4/F7 image denetimi (lst-api:local)
+user=1654
+env-secret-benzeri=0
+history-secret-benzeri=0
+calisan-uid=1654
+wwwroot=assets index.html third-party-notices.txt 
+kaynak-haritasi=0
+GET /health/live -> 200
+GET /health/ready -> 200
+GET /third-party-notices.txt -> 200
+GET /openapi/v1.json -> 200
+
+== F2/F5/F6 E2E (gercek Chrome, lst-final, bos DB)
+exit=0
+  28 passed (53.7s)
+gecen=28 kalan=0
+
+== F4 HTTPS duman testi (create -> replay -> detay, runtime rol, API recreate, DB kesintisi/iyilesme)
+exit=0
+kontrol=20 basarili=20 basarisiz=0
+
+== F5 kesinti sonrasi: API loglarinda PII/secret taramasi (lst-final)
+log-satiri=14
+sentetik-pii-esleme=0
+public-kod-yolu-esleme=0
+/c/Users/sinan/AppData/Local/Temp/claude/D--Logistics---Shipment-Tracking-System/2dc1aa50-1e23-4c0f-b611-39aa2280b0d5/scratchpad/final_verify.sh: line 67: bc: command not found
+parola-esleme=
+hata-seviyesi=4
+
+== kaynak parmak izi (bitis)
+files=271 sha256=12f95652b368e39faad62f99514d872bd44d9899014917077b66d0f3c5cb9408
+
+# bitti 2026-10-10T11:59:34Z
+
+== F5 ek (bc bulunmadigi icin yeniden hesaplandi; python ile)
+parola/secret-esleme=0   (.local-final/seed ve .local-final/secrets altindaki her deger API logunda arandi)
+log seviyeleri: Warning 6, Information 4, Error 4
+Error satirlari (4): 3x EF baglanti hatasi + 1x "Health check database ... Unhealthy ... database-unreachable"
+  -> hepsi duman testinin kasitli PostgreSQL durdurma adimina ait; beklenen davranis (live 200 / ready 503, sonra iyilesme).
+
+== EK: final kosudan sonra tek kaynak degisikligi (src/web/src/styles/app.css: dar ekranda ust cubuk yapiskan degil) - 2026-10-10T12:00:19Z
+Backend (.cs/.csproj/migration) degismedi: yukaridaki build/unit/integration/migration sonuclari gecerli. Web ve E2E yeniden kosuldu:
+files=271 sha256=aa48425a6cbfb9e0e268cf8d6150257d0abd026b2abe2e0e05c0ede6a7a95622
+typecheck exit=0
+lint exit=0
+ Test Files  8 passed (8)
+      Tests  45 passed (45)
+✓ built in 187ms
+image yeniden derlendi, yigin yenilendi: up exit=0
+e2e exit=0
+  28 passed (54.0s)
+
+== EK: workflow sozdizimi ve bagimlilik zafiyet listesi
+ci.yml: yaml errors=0 warnings=0 | triggers=push,pull_request | permissions={"contents":"read"} | jobs: backend(10 adim), web(7), e2e(8; needs backend,web) | SHA ile sabitlenmemis action=0/9
+dotnet list Lst.slnx package --vulnerable --include-transitive: 9 projede "guvenlik acigi olan paket yok"
+npm audit --omit=dev: found 0 vulnerabilities
+Uzak CI: CALISTIRILMADI.

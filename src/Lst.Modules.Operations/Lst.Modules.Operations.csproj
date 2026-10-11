@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Lst.Modules.Operations</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Lst.Platform\Lst.Platform.csproj" />
+    <ProjectReference Include="..\Lst.Modules.Identity\Lst.Modules.Identity.csproj" />
+    <ProjectReference Include="..\Lst.Modules.Shipments\Lst.Modules.Shipments.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lst.UnitTests" />
+    <InternalsVisibleTo Include="Lst.IntegrationTests" />
+  </ItemGroup>
+</Project>

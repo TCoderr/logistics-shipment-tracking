@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Lst.Api/Lst.Api.csproj" />
+    <Project Path="src/Lst.Platform/Lst.Platform.csproj" />
+    <Project Path="src/Lst.Modules.Identity/Lst.Modules.Identity.csproj" />
+    <Project Path="src/Lst.Modules.Shipments/Lst.Modules.Shipments.csproj" />
+    <Project Path="src/Lst.Modules.Operations/Lst.Modules.Operations.csproj" />
+    <Project Path="src/Lst.Modules.Tracking/Lst.Modules.Tracking.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Lst.Testing/Lst.Testing.csproj" />
+    <Project Path="tests/Lst.UnitTests/Lst.UnitTests.csproj" />
+    <Project Path="tests/Lst.IntegrationTests/Lst.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

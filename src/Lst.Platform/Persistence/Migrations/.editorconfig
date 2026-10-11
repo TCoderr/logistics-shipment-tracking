@@ -1,0 +1,3 @@
+# EF Core tarafından üretilen migration kodu: analizörler üretilmiş kod olarak ele alır.
+[*.cs]
+generated_code = true

@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LST Operasyon Önizleme</title>
+<style>
+/* Layout: üst çubuk + sekmeli çalışma alanı; masaüstünde yoğun tablo, public takipte tek sütun mobil çerçeve.
+   Token'lar 07-ui-design.md ile aynı adları taşır. Harici font/CDN yok (çevrimdışı prototip). */
+:root {
+  --bg: #f3f5f6;
+  --surface: #ffffff;
+  --surface-2: #f8fafb;
+  --ink: #172026;
+  --muted: #55626c;
+  --line: #d8dee2;
+  --line-strong: #b9c3ca;
+  --accent: #1d5c96;
+  --accent-ink: #ffffff;
+  --accent-soft: #e6eef6;
+  --focus: #1d5c96;
+  --row-hover: #f1f5f8;
+  --row-selected: #e8f0f7;
+  /* Durum tonları: metin + zemin çifti, ikon ve etiketle birlikte kullanılır */
+  --good-ink: #1b6b34;   --good-bg: #e5f3e8;
+  --info-ink: #24527f;   --info-bg: #e7eff7;
+  --warn-ink: #7a4f00;   --warn-bg: #fbf0d6;
+  --serious-ink: #9a3f12; --serious-bg: #fbe8dc;
+  --critical-ink: #a3221a; --critical-bg: #fbe4e1;
+  --neutral-ink: #4d5962; --neutral-bg: #eceff1;
+  --font-ui: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --fs-xs: 0.75rem; --fs-sm: 0.8125rem; --fs-md: 0.875rem; --fs-lg: 1rem; --fs-xl: 1.25rem;
+  --radius: 4px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161a; --surface: #182026; --surface-2: #1d262d; --ink: #e3e9ed; --muted: #9eabb4;
+    --line: #2b363e; --line-strong: #3d4a53; --accent: #79aee0; --accent-ink: #0d1a26; --accent-soft: #1d3042;
+    --focus: #8cc0f0; --row-hover: #1f2a32; --row-selected: #213345;
+    --good-ink: #8fd6a2; --good-bg: #173322; --info-ink: #9cc4ea; --info-bg: #1a2c3e;
+    --warn-ink: #f0c56b; --warn-bg: #3a2e12; --serious-ink: #f3a77d; --serious-bg: #3d2416;
+    --critical-ink: #f5a097; --critical-bg: #421f1c; --neutral-ink: #b3bec6; --neutral-bg: #252f36;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161a; --surface: #182026; --surface-2: #1d262d; --ink: #e3e9ed; --muted: #9eabb4;
+  --line: #2b363e; --line-strong: #3d4a53; --accent: #79aee0; --accent-ink: #0d1a26; --accent-soft: #1d3042;
+  --focus: #8cc0f0; --row-hover: #1f2a32; --row-selected: #213345;
+  --good-ink: #8fd6a2; --good-bg: #173322; --info-ink: #9cc4ea; --info-bg: #1a2c3e;
+  --warn-ink: #f0c56b; --warn-bg: #3a2e12; --serious-ink: #f3a77d; --serious-bg: #3d2416;
+  --critical-ink: #f5a097; --critical-bg: #421f1c; --neutral-ink: #b3bec6; --neutral-bg: #252f36;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 var(--fs-md)/1.45 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-size: 0.95em; letter-spacing: 0.01em; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.icon { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Üst çubuk */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px;
+  padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 600; font-size: var(--fs-md); padding-block: 12px; white-space: nowrap; }
+.brand span { color: var(--muted); font-weight: 400; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; align-self: stretch; }
+.tab {
+  border: 0; background: none; padding: 12px 12px 10px; cursor: pointer; color: var(--muted);
+  border-bottom: 2px solid transparent; font-size: var(--fs-md); display: inline-flex; gap: 6px; align-items: center;
+}
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.tab:hover { color: var(--ink); }
+.count { font-size: var(--fs-xs); background: var(--neutral-bg); color: var(--neutral-ink); border-radius: 999px; padding: 0 7px; font-variant-numeric: tabular-nums; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; padding-block: 8px; font-size: var(--fs-sm); }
+.demo-badge { font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--warn-ink); background: var(--warn-bg); padding: 2px 8px; border-radius: var(--radius); }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); background: var(--surface);
+  padding: 5px 12px; border-radius: var(--radius); cursor: pointer; font-size: var(--fs-sm); white-space: nowrap;
+}
+.btn:hover { background: var(--surface-2); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn-primary:hover { background: var(--accent); filter: brightness(1.08); }
+.btn-link { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: inherit; }
+
+.demo-note { padding: 6px 16px; font-size: var(--fs-sm); color: var(--muted); border-bottom: 1px solid var(--line); background: var(--surface-2); }
+main { padding: 16px; max-width: 1600px; margin: 0 auto; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h2 { font-size: var(--fs-lg); font-weight: 600; }
+h3 { font-size: var(--fs-md); font-weight: 600; }
+.section-label { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+
+/* KPI şeridi: kart değil, tek satır ölçüm listesi */
+.kpis { margin: 0 0 12px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); }
+.kpi-row { display: flex; flex-wrap: wrap; margin: 0; }
+.kpi { flex: 1 1 180px; padding: 8px 14px; border-right: 1px solid var(--line); min-width: 0; }
+.kpi.last { border-right: 0; }
+.kpi dt { font-size: var(--fs-xs); color: var(--muted); }
+.kpi dd { margin: 2px 0 0; font-size: var(--fs-lg); font-weight: 600; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.kpi dd small { font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
+.kpi-asof { margin: 0; border-top: 1px solid var(--line); padding: 6px 14px; font-size: var(--fs-xs); color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.kpi-defs { margin: 0 0 12px; font-size: var(--fs-sm); }
+.kpi-defs summary { cursor: pointer; color: var(--accent); width: fit-content; }
+.kpi-defs dl { display: grid; grid-template-columns: minmax(150px, 220px) 1fr; gap: 4px 16px; margin: 8px 0 0; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.kpi-defs dt { font-weight: 600; }
+.kpi-defs dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--muted); overflow-wrap: anywhere; }
+
+/* Araç çubuğu ve filtreler */
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.search { flex: 1 1 320px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--radius); padding: 0 8px; min-width: 0; }
+.search input { border: 0; background: none; padding: 7px 2px; flex: 1; min-width: 0; outline: none; }
+.search:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
+kbd { font-family: var(--font-mono); font-size: var(--fs-xs); border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; color: var(--muted); background: var(--surface-2); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 8px; font-size: var(--fs-sm); }
+.filters label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.filters select { border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--radius); padding: 4px 6px; color: var(--ink); }
+.filters input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
+.active-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: var(--fs-sm); margin-bottom: 8px; min-height: 26px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: 999px; padding: 1px 4px 1px 10px; }
+.chip button { border: 0; background: none; cursor: pointer; padding: 0 4px; color: var(--muted); font-size: 1rem; line-height: 1; }
+
+/* Tablolar */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: var(--fs-sm); }
+th, td { text-align: left; padding: 0 10px; height: 36px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
+thead th { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); background: var(--surface-2); height: 32px; position: sticky; top: 0; }
+tbody tr:hover { background: var(--row-hover); }
+tbody tr[aria-selected="true"] { background: var(--row-selected); }
+tbody tr:last-child td { border-bottom: 0; }
+th button.sort { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+th[aria-sort="ascending"] .sort::after { content: "▲"; font-size: 9px; }
+th[aria-sort="descending"] .sort::after { content: "▼"; font-size: 9px; }
+td.r, th.r { text-align: right; }
+.table-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; font-size: var(--fs-sm); color: var(--muted); }
+
+/* Durum etiketi: ikon + metin + ton */
+.status { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 6px; border-radius: var(--radius); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+.t-good { color: var(--good-ink); background: var(--good-bg); }
+.t-info { color: var(--info-ink); background: var(--info-bg); }
+.t-warn { color: var(--warn-ink); background: var(--warn-bg); }
+.t-serious { color: var(--serious-ink); background: var(--serious-bg); }
+.t-critical { color: var(--critical-ink); background: var(--critical-bg); }
+.t-neutral { color: var(--neutral-ink); background: var(--neutral-bg); }
+.delay { display: inline-flex; align-items: center; gap: 4px; color: var(--critical-ink); font-weight: 600; font-size: var(--fs-xs); }
+.exc-count { display: inline-flex; align-items: center; gap: 4px; color: var(--serious-ink); font-weight: 600; }
+.sev { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; font-size: var(--fs-xs); }
+.sev-high { color: var(--critical-ink); }
+.sev-medium { color: var(--warn-ink); }
+.overdue { color: var(--critical-ink); font-weight: 600; }
+
+/* Detay */
+.detail-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0; }
+.detail-head h1 { font-size: var(--fs-xl); font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.02em; }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: var(--fs-sm); }
+.meta b { font-weight: 600; }
+.exc-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 14px; background: var(--serious-bg); color: var(--serious-ink); border: 1px solid var(--line); border-top: 0; font-size: var(--fs-sm); }
+.exc-banner .btn { color: var(--ink); }
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+.panel + .panel { margin-top: 16px; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; font-size: var(--fs-xs); }
+.seg button { border: 0; background: var(--surface); padding: 3px 10px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+.timeline { list-style: none; margin: 0; padding: 0; }
+.tl-item { display: grid; grid-template-columns: 96px 20px minmax(0, 1fr); gap: 0 8px; position: relative; padding-bottom: 14px; }
+.tl-item::before { content: ""; position: absolute; left: 113px; top: 18px; bottom: 0; width: 1px; background: var(--line-strong); }
+.tl-item:last-child::before { display: none; }
+.tl-time { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 2px; text-align: right; }
+.tl-dot { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line-strong); z-index: 1; }
+.tl-dot .icon { width: 11px; height: 11px; }
+.tl-body { min-width: 0; }
+.tl-title { font-weight: 600; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.tl-sub { font-size: var(--fs-sm); color: var(--muted); }
+.tl-item.stale .tl-body { border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: 4px 8px; }
+.tag { font-size: var(--fs-xs); font-weight: 600; padding: 0 6px; border-radius: var(--radius); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.why-not { font-size: var(--fs-sm); color: var(--muted); margin: 8px 0 0; }
+.confirm { margin-top: 10px; padding: 10px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface-2); display: grid; gap: 8px; }
+.confirm label { font-size: var(--fs-sm); font-weight: 600; }
+.confirm textarea, .resolve textarea { width: 100%; min-height: 64px; resize: vertical; border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 6px 8px; background: var(--surface); }
+.kv { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 4px 12px; font-size: var(--fs-sm); margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+
+/* İstisna kuyruğu */
+.subtabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.subtab { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 999px; padding: 3px 12px; cursor: pointer; font-size: var(--fs-sm); }
+.subtab[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+tr.resolve-row td { height: auto; padding: 0; white-space: normal; background: var(--surface-2); }
+.resolve { padding: 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 20px; }
+.resolve .full { grid-column: 1 / -1; }
+.resolve label { font-size: var(--fs-sm); font-weight: 600; display: block; margin-bottom: 4px; }
+.resolve select { border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--radius); padding: 5px 6px; width: 100%; }
+
+/* Public takip (mobil) */
+.phone { max-width: 380px; margin: 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px 16px 24px; }
+.phone h1 { font-size: var(--fs-lg); }
+.pub-status { display: flex; align-items: center; gap: 10px; margin: 18px 0 4px; font-size: var(--fs-xl); font-weight: 600; }
+.pub-status .status { font-size: var(--fs-md); padding: 4px 10px 4px 8px; }
+.pub-status .icon { width: 16px; height: 16px; }
+.pub-date { font-size: var(--fs-lg); margin: 8px 0 2px; }
+.pub-tl { list-style: none; margin: 20px 0 0; padding: 0; }
+.pub-tl li { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 10px; padding-bottom: 14px; position: relative; }
+.pub-tl li::before { content: ""; position: absolute; left: 6px; top: 14px; bottom: 0; width: 1px; background: var(--line-strong); }
+.pub-tl li:last-child::before { display: none; }
+.pub-tl .dot { width: 13px; height: 13px; border-radius: 50%; background: var(--accent); margin-top: 4px; z-index: 1; }
+.pub-tl li.first .dot { background: var(--surface); border: 2px solid var(--line-strong); }
+.pub-tl time { display: block; font-size: var(--fs-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.privacy { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
+.pub-wrap { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.pub-notes { font-size: var(--fs-sm); max-width: 60ch; }
+.pub-notes ul { padding-left: 18px; margin: 6px 0 0; }
+
+/* Durum galerisi */
+.states { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.state-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.notice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius); font-size: var(--fs-sm); }
+.notice .icon { margin-top: 2px; }
+.skeleton { height: 12px; border-radius: 3px; background: linear-gradient(90deg, var(--neutral-bg), var(--surface-2), var(--neutral-bg)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.scan-result { border: 2px solid currentColor; border-radius: var(--radius); padding: 10px 12px; font-size: var(--fs-lg); font-weight: 600; display: flex; gap: 10px; align-items: center; }
+.scan-result small { display: block; font-size: var(--fs-sm); font-weight: 400; color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+@media (max-width: 1000px) {
+  .detail-grid, .pub-wrap { grid-template-columns: minmax(0, 1fr); }
+  .resolve { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .topbar-right { margin-left: 0; }
+  .kpi { flex-basis: 50%; border-bottom: 1px solid var(--line); }
+  .kpi-defs dl { grid-template-columns: minmax(0, 1fr); }
+  .tl-item { grid-template-columns: 70px 20px minmax(0, 1fr); }
+  .tl-item::before { left: 87px; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-created" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5"/></symbol>
+  <symbol id="i-athub" viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1"/></symbol>
+  <symbol id="i-transit" viewBox="0 0 16 16"><path d="M2.5 8h10M9 4.5 12.5 8 9 11.5"/></symbol>
+  <symbol id="i-ofd" viewBox="0 0 16 16"><path d="M1.5 8h7M5.5 4.5 9 8l-3.5 3.5M8.5 4.5 12 8l-3.5 3.5"/></symbol>
+  <symbol id="i-failed" viewBox="0 0 16 16"><path d="M8 2.5 14 13H2Z"/><path d="M8 6.5v3M8 11.3v.2"/></symbol>
+  <symbol id="i-delivered" viewBox="0 0 16 16"><path d="m3 8.5 3.2 3L13 4.5"/></symbol>
+  <symbol id="i-returning" viewBox="0 0 16 16"><path d="M13.5 8h-10M7 4.5 3.5 8 7 11.5"/></symbol>
+  <symbol id="i-returned" viewBox="0 0 16 16"><path d="M13.5 8H5M8.5 4.5 5 8l3.5 3.5M2.5 3.5v9"/></symbol>
+  <symbol id="i-cancelled" viewBox="0 0 16 16"><path d="m4 4 8 8M12 4l-8 8"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2 1.3"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 16 16"><path d="M4 14V2.5M4 3h7.5L10 6l1.5 3H4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></symbol>
+  <symbol id="i-diamond" viewBox="0 0 16 16"><path d="M8 2.5 13.5 8 8 13.5 2.5 8Z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 16 16"><path d="M6 2.5v3M10 2.5v3M4.5 5.5h7v2a3.5 3.5 0 0 1-7 0ZM8 11v2.5"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="brand">LST <span>Operasyon</span></div>
+  <div class="tabs" role="tablist" aria-label="Ekranlar">
+    <button class="tab" role="tab" id="tab-list" aria-controls="panel-list" aria-selected="true">Gönderiler</button>
+    <button class="tab" role="tab" id="tab-detail" aria-controls="panel-detail" aria-selected="false" tabindex="-1">Gönderi detayı</button>
+    <button class="tab" role="tab" id="tab-exc" aria-controls="panel-exc" aria-selected="false" tabindex="-1">İstisnalar <span class="count" aria-label="7 açık">7</span></button>
+    <button class="tab" role="tab" id="tab-public" aria-controls="panel-public" aria-selected="false" tabindex="-1">Public takip</button>
+    <button class="tab" role="tab" id="tab-states" aria-controls="panel-states" aria-selected="false" tabindex="-1">Ekran durumları</button>
+  </div>
+  <div class="topbar-right">
+    <span class="demo-badge">Demo</span>
+    <span>M. Arslan · <span class="muted">OpsAgent</span></span>
+    <button class="btn" id="theme-toggle" type="button" aria-pressed="false">Koyu tema</button>
+  </div>
+</header>
+<p class="demo-note">Tasarım önizlemesi. Tüm veriler sentetik (Demo), kişi adları uydurmadır. Backend bağlantısı yoktur; butonlar işlem yapmaz. Demo saati: 12 Ekim 2026 Pazartesi 14:02 (Europe/Istanbul).</p>
+
+<main>
+<!-- ============ GÖNDERİ LİSTESİ ============ -->
+<section id="panel-list" role="tabpanel" aria-labelledby="tab-list">
+  <h2 class="sr-only">Gönderiler</h2>
+  <div class="kpis" role="group" aria-label="Operasyon özeti (Demo)">
+  <dl class="kpi-row">
+    <div class="kpi"><dt>Bugün teslim beklenen</dt><dd>184 <small>121 teslim edildi</small></dd></div>
+    <div class="kpi"><dt>Gecikmiş açık gönderi</dt><dd><button class="btn-link" type="button" data-apply="delayed">9</button> <small>filtreyi uygula</small></dd></div>
+    <div class="kpi"><dt>Zamanında teslim, son 7 gün</dt><dd>%91,8 <small>1.412 / 1.538</small></dd></div>
+    <div class="kpi"><dt>İlk denemede teslim, son 7 gün</dt><dd>%91,9 <small>1.297 / 1.412</small></dd></div>
+    <div class="kpi last"><dt>Açık istisna</dt><dd>7 <small>2 vadesi geçti · en eski 62 sa</small></dd></div>
+  </dl>
+  <p class="kpi-asof"><span>Hesaplama: 12 Eki 14:02 · Tüm hub'lar · Europe/Istanbul</span><span>Değerler Demo'dur; liste aşağıda yalnız örnek satırları gösterir.</span></p>
+  </div>
+  <details class="kpi-defs">
+    <summary>Bu sayılar nasıl hesaplanıyor?</summary>
+    <dl>
+      <dt>Bugün teslim beklenen</dt><dd>COUNT(*) WHERE promised_delivery_date = today AND kind = 'Forward' AND status &lt;&gt; 'Cancelled'</dd>
+      <dt>Gecikmiş açık</dt><dd>COUNT(*) WHERE status NOT IN ('Delivered','ReturnedToSender','Cancelled','ReturningToSender') AND promised_delivery_date &lt; today</dd>
+      <dt>Zamanında teslim</dt><dd>delivered_at (yerel tarih) &lt;= promised_delivery_date olanlar / son 7 tam günde teslim edilenler</dd>
+      <dt>İlk denemede teslim</dt><dd>attempt_number = 1 ile teslim edilenler / son 7 tam günde teslim edilenler</dd>
+      <dt>Açık istisna</dt><dd>status IN ('Open','Assigned'); vadesi geçen: due_at &lt; now; en eski: now − MIN(opened_at)</dd>
+    </dl>
+  </details>
+
+  <div class="toolbar">
+    <label class="search">
+      <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+      <span class="sr-only">Gönderi ara</span>
+      <input id="q" type="search" placeholder="Tracking no, koli etiketi, sipariş referansı veya telefonun son 4 hanesi" autocomplete="off">
+      <kbd aria-hidden="true">/</kbd>
+    </label>
+    <button class="btn btn-primary" type="button">+ Gönderi oluştur</button>
+  </div>
+  <div class="filters" role="group" aria-label="Filtreler">
+    <label for="f-status">Durum
+      <select id="f-status">
+        <option value="">Tümü</option>
+        <option value="Created">Kaydedildi</option>
+        <option value="AtHub">Hub'da</option>
+        <option value="InTransit">Yolda</option>
+        <option value="OutForDelivery">Dağıtımda</option>
+        <option value="DeliveryFailed">Teslim edilemedi</option>
+        <option value="Delivered">Teslim edildi</option>
+        <option value="ReturningToSender">İadede</option>
+        <option value="ReturnedToSender">İade edildi</option>
+        <option value="Cancelled">İptal</option>
+      </select>
+    </label>
+    <label for="f-hub">Hub
+      <select id="f-hub"><option value="">Tümü</option><option>IST-01</option><option>ANK-02</option><option>IZM-01</option></select>
+    </label>
+    <label for="f-carrier">Carrier
+      <select id="f-carrier"><option value="">Tümü</option><option value="none">Kendi ağımız</option><option>SIMEX</option></select>
+    </label>
+    <label><input type="checkbox" id="f-delayed"> Gecikmiş</label>
+    <label><input type="checkbox" id="f-exc"> Açık istisna</label>
+    <label for="f-created">Oluşturma
+      <select id="f-created"><option>Son 7 gün</option><option>Son 30 gün</option><option>Bugün</option></select>
+    </label>
+  </div>
+  <div class="active-filters" id="active-filters" aria-live="polite"></div>
+
+  <div class="table-wrap">
+    <table aria-describedby="list-caption">
+      <caption id="list-caption" class="sr-only">Gönderi listesi, Demo verisi</caption>
+      <thead>
+        <tr>
+          <th scope="col">Tracking no</th>
+          <th scope="col">Durum</th>
+          <th scope="col" aria-sort="none" data-sort="promised"><button class="sort" type="button">Söz verilen</button></th>
+          <th scope="col">Gecikme</th>
+          <th scope="col">Rota</th>
+          <th scope="col">Şu an</th>
+          <th scope="col">Carrier</th>
+          <th scope="col" class="r">Koli</th>
+          <th scope="col">İstisna</th>
+          <th scope="col" aria-sort="descending" data-sort="changed"><button class="sort" type="button">Son değişim</button></th>
+        </tr>
+      </thead>
+      <tbody id="list-body"></tbody>
+    </table>
+  </div>
+  <div class="table-foot"><span id="list-count"></span><button class="btn" type="button">Daha fazla yükle</button></div>
+</section>
+
+<!-- ============ GÖNDERİ DETAYI ============ -->
+<section id="panel-detail" role="tabpanel" aria-labelledby="tab-detail" hidden>
+  <p style="margin:0 0 10px"><button class="btn-link" type="button" data-goto="list">← Gönderiler</button></p>
+  <div class="detail-head">
+    <h1 id="d-tn">LS4829105735</h1>
+    <span id="d-status"></span>
+    <div class="meta">
+      <span>Servis <b id="d-service">Standard</b></span>
+      <span>Söz verilen <b id="d-promised">12 Eki Pzt</b></span>
+      <span id="d-delay"></span>
+      <span>Rota <b id="d-route" class="mono">IST-01 → ANK-02</b></span>
+      <span>Sipariş ref. <b class="mono">ORD-2026-100245</b></span>
+      <span class="muted">Son güncelleme 10 Eki 12:47</span>
+    </div>
+  </div>
+  <div class="exc-banner" id="d-exc">
+    <svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg>
+    <span><b>Açık istisna:</b> Teslim edilemedi · Orta önem · vade 12 Eki 12:47 · <span class="overdue">vadesi 1 sa 15 dk geçti</span> · sahibi yok</span>
+    <button class="btn" type="button">Üzerime al</button>
+  </div>
+
+  <div class="detail-grid">
+    <div class="panel" id="d-timeline-panel">
+      <div class="panel-head">
+        <h2>Zaman çizelgesi</h2>
+        <div class="seg" role="group" aria-label="Olay filtresi">
+          <button type="button" aria-pressed="true" data-tl="all">Tüm olaylar</button>
+          <button type="button" aria-pressed="false" data-tl="applied">Yalnız uygulananlar</button>
+        </div>
+      </div>
+      <ol class="timeline" id="d-timeline">
+        <li class="tl-item">
+          <time class="tl-time" datetime="2026-10-10T09:47:00Z">10 Eki<br>12:47</time>
+          <span class="tl-dot t-serious"><svg class="icon" aria-hidden="true"><use href="#i-failed"/></svg></span>
+          <div class="tl-body"><div class="tl-title">Teslim edilemedi <span class="muted mono">ANK-02</span></div><div class="tl-sub">Deneme 1/3 · Alıcı adreste yok · Hub taraması (el terminali)</div></div>
+        </li>
+        <li class="tl-item">
+          <time class="tl-time" datetime="2026-10-10T07:05:00Z">10 Eki<br>10:05</time>
+          <span class="tl-dot t-info"><svg class="icon" aria-hidden="true"><use href="#i-ofd"/></svg></span>
+          <div class="tl-body"><div class="tl-title">Dağıtıma çıktı <span class="muted mono">ANK-02</span></div><div class="tl-sub">2/2 koli · Hub taraması</div></div>
+        </li>
+        <li class="tl-item">
+          <time class="tl-time" datetime="2026-10-10T05:15:00Z">10 Eki<br>08:15</time>
+          <span class="tl-dot t-info"><svg class="icon" aria-hidden="true"><use href="#i-athub"/></svg></span>
+          <div class="tl-body"><div class="tl-title">Hub'a ulaştı <span class="muted mono">ANK-02</span></div><div class="tl-sub">2/2 koli · Hub taraması</div></div>
+        </li>
+        <li class="tl-item">
+          <time class="tl-time" datetime="2026-10-09T18:40:00Z">09 Eki<br>21:40</time>
+          <span class="tl-dot t-info"><svg class="icon" aria-hidden="true"><use href="#i-transit"/></svg></span>
+          <div class="tl-body"><div class="tl-title">Hub'dan çıktı <span class="muted mono">IST-01</span></div><div class="tl-sub">2/2 koli · Hub taraması</div></div>
+        </li>
+        <li class="tl-item stale" data-outcome="stale">
+          <time class="tl-time" datetime="2026-10-09T16:20:00Z">09 Eki<br>19:20</time>
+          <span class="tl-dot t-neutral"><svg class="icon" aria-hidden="true"><use href="#i-athub"/></svg></span>
+          <div class="tl-body"><div class="tl-title">Hub'a ulaştı <span class="muted mono">IST-01 · koli 01</span> <span class="tag t-warn">Geç alındı</span> <span class="tag t-neutral">Uygulanmadı</span></div><div class="tl-sub">Alındı: 10 Eki 09:20 (çevrimdışı el terminali). Güncel durumdan eski olduğu için yalnız geçmişe yazıldı.</div></div>
+        </li>
+        <li class="tl-item">
+          <time class="tl-time" datetime="2026-10-09T16:02:00Z">09 Eki<br>19:02</time>
+          <span class="tl-dot t-info"><svg class="icon" aria-hidden="true"><use href="#i-athub"/></svg></span>
+          <div class="tl-body"><div class="tl-title">Hub'a ulaştı <span class="muted mono">IST-01</span></div><div class="tl-sub">2/2 koli · Hub taraması</div></div>
+        </li>
+        <li class="tl-item">
+          <time class="tl-time" datetime="2026-10-09T11:20:31Z">09 Eki<br>14:20</time>
+          <span class="tl-dot t-neutral"><svg class="icon" aria-hidden="true"><use href="#i-created"/></svg></span>
+          <div class="tl-body"><div class="tl-title">Kaydedildi</div><div class="tl-sub">Operatör · M. Arslan</div></div>
+        </li>
+      </ol>
+      <p class="muted" id="d-timeline-empty" hidden>Demo verisinde bu gönderinin ayrıntıları çizilmedi. Prototipte zaman çizelgesi, koliler, taraflar ve işlemler yalnız LS4829105735 için var.</p>
+    </div>
+
+    <div id="d-side">
+      <div class="panel">
+        <h2 style="margin-bottom:10px">İzinli işlemler</h2>
+        <div class="actions">
+          <button class="btn" type="button" id="rts-open" aria-expanded="false" aria-controls="rts-panel">Göndericiye iade başlat</button>
+        </div>
+        <p class="why-not">İptal yok: gönderi hub'dan çıktı. Yeni dağıtım hub taramasıyla başlar (kalan deneme hakkı 2).</p>
+        <form class="confirm" id="rts-panel" hidden>
+          <label for="rts-reason">İade nedeni (zorunlu)</label>
+          <textarea id="rts-reason" required>Alıcıya ulaşılamadı; gönderici iade istedi.</textarea>
+          <div class="actions">
+            <button class="btn btn-primary" type="submit">Göndericiye iadeyi başlat</button>
+            <button class="btn" type="button" id="rts-cancel">Vazgeç</button>
+          </div>
+          <p class="muted" style="margin:0;font-size:var(--fs-xs)">Demo: gönderim yapılmaz. Gerçek uygulamada istek If-Match ile gider; gönderi bu arada değiştiyse güncel durum gösterilir.</p>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2 style="margin-bottom:8px">Koliler <span class="muted num">(2)</span></h2>
+        <div class="table-wrap" style="border:0">
+          <table>
+            <thead><tr><th scope="col">Etiket</th><th scope="col" class="r">Ağırlık</th><th scope="col">Ölçü (cm)</th><th scope="col">Son tarama</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">LS4829105735-01</td><td class="r num">2,4 kg</td><td class="num">40×30×20</td><td>Dağıtıma çıkış · 10 Eki 10:05</td></tr>
+              <tr><td class="mono">LS4829105735-02</td><td class="r num">0,9 kg</td><td class="num">30×20×10</td><td>Dağıtıma çıkış · 10 Eki 10:05</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 style="margin-bottom:8px">Taraflar</h2>
+        <dl class="kv">
+          <dt>Alıcı</dt><dd>Ece Yılmaz · <span class="num">+90 532 123 45 67</span><br>Kızılay Mh. 5. Sk. No: 3 D: 7, Çankaya / Ankara</dd>
+          <dt>Gönderen</dt><dd>Kaya Tekstil Ltd. · Deniz Kaya · İstanbul</dd>
+          <dt>Denemeler</dt><dd>1 / 3 · son: Alıcı adreste yok</dd>
+          <dt>Kayıtlar</dt><dd><button class="btn-link" type="button">İşlem geçmişi (audit)</button></dd>
+        </dl>
+        <p class="muted" style="font-size:var(--fs-xs);margin:8px 0 0">OpsAgent rolü telefonu tam görür. Hub görevlisi, gönderi kendi hub'ında dağıtımda değilse maskeli görür (+90532*****67).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ İSTİSNA KUYRUĞU ============ -->
+<section id="panel-exc" role="tabpanel" aria-labelledby="tab-exc" hidden>
+  <div class="panel-head">
+    <h2>İstisnalar</h2>
+    <span class="muted" style="font-size:var(--fs-sm)">Sıra: vadesi geçenler → önem → vade</span>
+  </div>
+  <div class="subtabs" role="group" aria-label="Kuyruk görünümü">
+    <button class="subtab" type="button" aria-pressed="false" data-view="mine">Benim <span class="num">(2)</span></button>
+    <button class="subtab" type="button" aria-pressed="false" data-view="unassigned">Sahipsiz <span class="num">(4)</span></button>
+    <button class="subtab" type="button" aria-pressed="true" data-view="all">Tümü açık <span class="num">(7)</span></button>
+    <button class="subtab" type="button" aria-pressed="false" data-view="resolved">Bugün çözülen <span class="num">(18)</span></button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <caption class="sr-only">Açık istisnalar, Demo verisi. Satırı seçip Enter ile çözüm panelini açın.</caption>
+      <thead>
+        <tr><th scope="col">Önem</th><th scope="col">Tip</th><th scope="col">Gönderi</th><th scope="col">Gönderi durumu</th><th scope="col">Hub</th><th scope="col">Açılış</th><th scope="col">Vade</th><th scope="col">Sahibi</th><th scope="col"><span class="sr-only">İşlem</span></th></tr>
+      </thead>
+      <tbody id="exc-body"></tbody>
+    </table>
+  </div>
+  <p class="muted" style="font-size:var(--fs-sm)">Klavye: ↑/↓ satır seçer, Enter çözüm panelini açar, Esc kapatır.</p>
+</section>
+
+<!-- ============ PUBLIC TAKİP ============ -->
+<section id="panel-public" role="tabpanel" aria-labelledby="tab-public" hidden>
+  <div class="pub-wrap">
+    <article class="phone" aria-label="Public takip ekranı, mobil görünüm (Demo)">
+      <h1>Gönderi takibi</h1>
+      <p class="muted" style="margin:4px 0 0"><span class="mono">LS90******13</span> · 2 koli</p>
+      <div class="pub-status"><span class="status t-info"><svg class="icon" aria-hidden="true"><use href="#i-ofd"/></svg>Dağıtımda</span></div>
+      <p class="pub-date">Tahmini teslim: <b>12 Ekim Pazartesi</b></p>
+      <p class="muted" style="margin:0;font-size:var(--fs-sm)">Son güncelleme: 12 Eki 09:58</p>
+      <ol class="pub-tl">
+        <li><span class="dot" aria-hidden="true"></span><div><time datetime="2026-10-12T06:58:00Z">12 Eki 09:58</time>Dağıtıma çıktı · Ankara</div></li>
+        <li><span class="dot" aria-hidden="true"></span><div><time datetime="2026-10-10T09:47:00Z">10 Eki 12:47</time>Teslim edilemedi, yeniden denenecek · Ankara</div></li>
+        <li><span class="dot" aria-hidden="true"></span><div><time datetime="2026-10-10T07:05:00Z">10 Eki 10:05</time>Dağıtıma çıktı · Ankara</div></li>
+        <li><span class="dot" aria-hidden="true"></span><div><time datetime="2026-10-10T05:15:00Z">10 Eki 08:15</time>Aktarma merkezine ulaştı · Ankara</div></li>
+        <li><span class="dot" aria-hidden="true"></span><div><time datetime="2026-10-09T18:40:00Z">09 Eki 21:40</time>Aktarma merkezinden çıktı · İstanbul</div></li>
+        <li><span class="dot" aria-hidden="true"></span><div><time datetime="2026-10-09T16:02:00Z">09 Eki 19:02</time>Aktarma merkezine ulaştı · İstanbul</div></li>
+        <li class="first"><span class="dot" aria-hidden="true"></span><div><time datetime="2026-10-09T11:20:31Z">09 Eki 14:20</time>Gönderi kaydı oluşturuldu</div></li>
+      </ol>
+      <p class="privacy">Ad, adres ve telefon bilgileri bu sayfada gösterilmez.</p>
+    </article>
+    <div class="pub-notes">
+      <h2>Bu ekranda neler yok</h2>
+      <ul>
+        <li>Alıcı ve gönderen adı, telefon, e-posta, adres satırı, ilçe, posta kodu</li>
+        <li>Sipariş referansı, hub iç kodları, carrier tesis kodları, iç notlar, istisnalar</li>
+        <li>Uygulanmamış (geç alınmış veya inceleme bekleyen) olaylar</li>
+        <li>Başarısız deneme nedeni (yalnız genel metin)</li>
+        <li>Harita ve "canlı kurye konumu": gerçek konum verisi yok</li>
+      </ul>
+      <p>Sayfa yalnız 26 karakterlik tahmin edilemez takip koduyla açılır. Geçersiz ve bulunamayan kod aynı "Gönderi bulunamadı" yanıtını alır; IP başına dakikada 20 istek sınırı vardır.</p>
+      <p class="muted">Önizleme masaüstünde dar çerçevede gösterilir; gerçek ekran 360 px genişlikte tek sütundur.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EKRAN DURUMLARI ============ -->
+<section id="panel-states" role="tabpanel" aria-labelledby="tab-states" hidden>
+  <h2 style="margin-bottom:12px">Ekran durumları</h2>
+  <div class="states">
+    <div class="state-box">
+      <span class="section-label">Yükleniyor</span>
+      <div class="skeleton" style="width:90%"></div><div class="skeleton" style="width:75%"></div><div class="skeleton" style="width:82%"></div>
+      <p class="muted" style="margin:0;font-size:var(--fs-sm)">İlk 300 ms gösterilmez; filtreler yükleme sırasında da kullanılabilir.</p>
+    </div>
+    <div class="state-box">
+      <span class="section-label">Boş (filtre sonucu)</span>
+      <p style="margin:0">Bu filtrelerle gönderi yok.</p>
+      <p class="muted" style="margin:0;font-size:var(--fs-sm)">Durum: İade edildi · Hub: IZM-01 · Gecikmiş</p>
+      <div><button class="btn" type="button">Filtreleri temizle</button></div>
+    </div>
+    <div class="state-box">
+      <span class="section-label">Hata</span>
+      <div class="notice t-critical" role="alert"><svg class="icon" aria-hidden="true"><use href="#i-failed"/></svg><div>Gönderiler yüklenemedi. Bağlantınızı kontrol edip yeniden deneyin.<br><span class="mono" style="font-size:var(--fs-xs)">traceId 4bf92f3577b34da6</span></div></div>
+      <div><button class="btn" type="button">Yeniden dene</button></div>
+    </div>
+    <div class="state-box">
+      <span class="section-label">Yetki yok</span>
+      <div class="notice t-neutral"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><div>Bu işlem için yetkiniz yok. Hub ataması için operasyon yöneticinize başvurun.</div></div>
+    </div>
+    <div class="state-box">
+      <span class="section-label">Bulunamadı</span>
+      <p style="margin:0">Gönderi bulunamadı veya erişiminiz yok.</p>
+      <p class="muted" style="margin:0;font-size:var(--fs-sm)">Kapsam dışı gönderiler için de aynı metin gösterilir; varlığı açığa çıkmaz.</p>
+    </div>
+    <div class="state-box">
+      <span class="section-label">Bayat veri</span>
+      <div class="notice t-warn"><svg class="icon" aria-hidden="true"><use href="#i-plug"/></svg><div>Canlı güncelleme kapalı · son yenileme 13:55 (7 dk önce). <button class="btn-link" type="button">Şimdi yenile</button></div></div>
+    </div>
+    <div class="state-box">
+      <span class="section-label">Çakışma (412)</span>
+      <div class="notice t-info"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><div>Bu gönderi siz bakarken güncellendi (Dağıtıma çıktı, 14:03). Güncel durumu yükledik; işlemi tekrar gözden geçirin. Yazdığınız not korundu.</div></div>
+    </div>
+    <div class="state-box">
+      <span class="section-label">Hub taraması sonucu</span>
+      <div class="scan-result t-good" role="status" aria-live="assertive"><svg class="icon" aria-hidden="true"><use href="#i-delivered"/></svg><div>Uygulandı · Hub'da<small>LS4829105735-01 · IST-01 · 1/2 koli hub'da</small></div></div>
+      <div class="scan-result t-critical"><svg class="icon" aria-hidden="true"><use href="#i-failed"/></svg><div>Reddedildi<small>Kolilerin hepsi hub'da değil (1/2). Çıkış için LS4829105735-02 de okutulmalı.</small></div></div>
+      <div class="scan-result t-neutral"><svg class="icon" aria-hidden="true"><use href="#i-athub"/></svg><div>Tekrar<small>Bu koli 19:02'de zaten tarandı; değişiklik yapılmadı.</small></div></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var STATUS = {
+    Created:           { label: "Kaydedildi",       tone: "t-neutral",  icon: "i-created" },
+    AtHub:             { label: "Hub'da",           tone: "t-info",     icon: "i-athub" },
+    InTransit:         { label: "Yolda",            tone: "t-info",     icon: "i-transit" },
+    OutForDelivery:    { label: "Dağıtımda",        tone: "t-info",     icon: "i-ofd" },
+    DeliveryFailed:    { label: "Teslim edilemedi", tone: "t-serious",  icon: "i-failed" },
+    Delivered:         { label: "Teslim edildi",    tone: "t-good",     icon: "i-delivered" },
+    ReturningToSender: { label: "İadede",           tone: "t-warn",     icon: "i-returning" },
+    ReturnedToSender:  { label: "İade edildi",      tone: "t-neutral",  icon: "i-returned" },
+    Cancelled:         { label: "İptal",            tone: "t-neutral",  icon: "i-cancelled" }
+  };
+
+  // Demo verisi. changed: sıralama için ISO; shown: gösterim.
+  var SHIPMENTS = [
+    { tn: "LS4829105735", status: "DeliveryFailed",    service: "Standard", promised: "2026-10-12", promisedLabel: "12 Eki Pzt", delay: "",       from: "IST-01", to: "ANK-02", at: "",       carrier: "",      pk: 2, exc: 1, changed: "2026-10-10T12:47", shown: "10 Eki 12:47" },
+    { tn: "LS5017733412", status: "OutForDelivery",    service: "Express",  promised: "2026-10-09", promisedLabel: "09 Eki Cum", delay: "2 iş günü", from: "IZM-01", to: "ANK-02", at: "",    carrier: "",      pk: 1, exc: 1, changed: "2026-10-12T09:41", shown: "12 Eki 09:41" },
+    { tn: "LS3901120408", status: "InTransit",         service: "Standard", promised: "2026-10-13", promisedLabel: "13 Eki Sal", delay: "",       from: "IST-01", to: "IZM-01", at: "",       carrier: "SIMEX", pk: 3, exc: 1, changed: "2026-10-12T08:12", shown: "12 Eki 08:12" },
+    { tn: "LS2287044419", status: "AtHub",             service: "Standard", promised: "2026-10-10", promisedLabel: "10 Eki Cmt", delay: "1 iş günü", from: "ANK-02", to: "IZM-01", at: "IZM-01", carrier: "",   pk: 1, exc: 1, changed: "2026-10-10T19:30", shown: "10 Eki 19:30" },
+    { tn: "LS6120458831", status: "Delivered",         service: "Express",  promised: "2026-10-12", promisedLabel: "12 Eki Pzt", delay: "",       from: "IST-01", to: "ANK-02", at: "",       carrier: "SIMEX", pk: 1, exc: 1, changed: "2026-10-12T11:42", shown: "12 Eki 11:42" },
+    { tn: "LS7031846620", status: "Created",           service: "Standard", promised: "2026-10-14", promisedLabel: "14 Eki Çar", delay: "",       from: "IST-01", to: "IZM-01", at: "",       carrier: "",      pk: 4, exc: 0, changed: "2026-10-12T13:58", shown: "12 Eki 13:58" },
+    { tn: "LS1188203947", status: "ReturningToSender", service: "Standard", promised: "2026-10-08", promisedLabel: "08 Eki Per", delay: "",       from: "IST-01", to: "ANK-02", at: "ANK-02", carrier: "",      pk: 1, exc: 0, changed: "2026-10-12T10:20", shown: "12 Eki 10:20" },
+    { tn: "LS9054417713", status: "OutForDelivery",    service: "Standard", promised: "2026-10-12", promisedLabel: "12 Eki Pzt", delay: "",       from: "IST-01", to: "ANK-02", at: "",       carrier: "",      pk: 2, exc: 0, changed: "2026-10-12T09:58", shown: "12 Eki 09:58" },
+    { tn: "LS4471029386", status: "AtHub",             service: "Express",  promised: "2026-10-13", promisedLabel: "13 Eki Sal", delay: "",       from: "IST-01", to: "ANK-02", at: "IST-01", carrier: "",      pk: 3, exc: 1, changed: "2026-10-12T12:31", shown: "12 Eki 12:31" },
+    { tn: "LS8812056634", status: "Cancelled",         service: "Standard", promised: "2026-10-14", promisedLabel: "14 Eki Çar", delay: "",       from: "ANK-02", to: "IST-01", at: "",       carrier: "",      pk: 1, exc: 0, changed: "2026-10-12T11:05", shown: "12 Eki 11:05" },
+    { tn: "LS3365920471", status: "InTransit",         service: "Standard", promised: "2026-10-13", promisedLabel: "13 Eki Sal", delay: "",       from: "IST-01", to: "IZM-01", at: "",       carrier: "",      pk: 2, exc: 0, changed: "2026-10-12T07:44", shown: "12 Eki 07:44" },
+    { tn: "LS7740318852", status: "ReturnedToSender",  service: "Standard", promised: "2026-10-06", promisedLabel: "06 Eki Sal", delay: "",       from: "ANK-02", to: "IZM-01", at: "",       carrier: "",      pk: 1, exc: 0, changed: "2026-10-11T16:10", shown: "11 Eki 16:10" },
+    { tn: "LS2045519987", status: "DeliveryFailed",    service: "Standard", promised: "2026-10-09", promisedLabel: "09 Eki Cum", delay: "2 iş günü", from: "IST-01", to: "ANK-02", at: "",    carrier: "",      pk: 1, exc: 1, changed: "2026-10-12T11:58", shown: "12 Eki 11:58" }
+  ];
+
+  var EXCEPTIONS = [
+    { sev: "High",   type: "Deneme hakkı bitti", occ: 3, tn: "LS2045519987", status: "DeliveryFailed", hub: "ANK-02", opened: "12 Eki 11:58", due: "12 Eki 13:58", overdue: "vadesi 4 dk geçti", owner: "", mine: false,
+      context: "Denemeler: Alıcı adreste yok (09 Eki) · Alıcı adreste yok (10 Eki) · Adres bulunamadı (12 Eki)", codes: ["Ek deneme onayla (ReattemptApproved)", "Göndericiye iade başlat (ReturnToSenderInitiated)"] },
+    { sev: "High",   type: "Carrier olay çakışması", occ: 1, tn: "LS3901120408", status: "InTransit", hub: "", opened: "12 Eki 08:12", due: "12 Eki 15:42", overdue: "", owner: "S. Demir", mine: false,
+      context: "SIMEX aynı olay kimliğini (simex-evt-000918273) farklı içerikle iki kez gönderdi. İlk kayıt korunuyor.", codes: ["Carrier ile doğrulandı (CarrierConfirmed)", "Olay elle uygulandı (EventAppliedManually)", "Olay yok sayıldı (EventDiscarded)"] },
+    { sev: "High",   type: "Koliler ayrı hub'larda", occ: 1, tn: "LS4471029386", status: "AtHub", hub: "IST-01", opened: "12 Eki 12:31", due: "12 Eki 16:31", overdue: "", owner: "", mine: false,
+      context: "Çıkış taraması reddedildi: 3 koliden 2'si IST-01'de, LS4471029386-03 son olarak IZM-01'de tarandı.", codes: ["Koliler birleştirildi (PackagesConsolidated)", "İşlem gerekmiyor (NoActionNeeded)"] },
+    { sev: "Medium", type: "Teslim edilemedi", occ: 1, tn: "LS4829105735", status: "DeliveryFailed", hub: "ANK-02", opened: "10 Eki 12:47", due: "12 Eki 12:47", overdue: "vadesi 1 sa 15 dk geçti", owner: "", mine: false,
+      context: "Deneme 1/3: Alıcı adreste yok.", codes: ["Ek deneme onayla (ReattemptApproved)", "Göndericiye iade başlat (ReturnToSenderInitiated)", "İşlem gerekmiyor (NoActionNeeded)"] },
+    { sev: "Medium", type: "Gecikme", occ: 1, tn: "LS5017733412", status: "OutForDelivery", hub: "ANK-02", opened: "10 Eki 00:05", due: "13 Eki 09:00", overdue: "", owner: "M. Arslan", mine: true,
+      context: "Söz verilen tarih 09 Eki. Gönderi bugün dağıtımda.", codes: ["İşlem gerekmiyor (NoActionNeeded)"] },
+    { sev: "Medium", type: "Gecikme", occ: 1, tn: "LS2287044419", status: "AtHub", hub: "IZM-01", opened: "11 Eki 00:05", due: "13 Eki 09:00", overdue: "", owner: "M. Arslan", mine: true,
+      context: "Söz verilen tarih 10 Eki. Son hareket: IZM-01 varış, 10 Eki 19:30.", codes: ["İşlem gerekmiyor (NoActionNeeded)"] },
+    { sev: "Medium", type: "Carrier olayı inceleme bekliyor", occ: 1, tn: "LS6120458831", status: "Delivered", hub: "", opened: "12 Eki 13:10", due: "13 Eki 13:10", overdue: "", owner: "", mine: false,
+      context: "Teslim (11:42) sonrasında daha yeni zamanlı 'Teslim edilemedi' olayı geldi (13:05). Durum Teslim edildi olarak korunuyor.", codes: ["Carrier ile doğrulandı (CarrierConfirmed)", "Olay yok sayıldı (EventDiscarded)"] }
+  ];
+
+  function el(tag, attrs, html) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+  function statusPill(code) {
+    var s = STATUS[code];
+    return '<span class="status ' + s.tone + '"><svg class="icon" aria-hidden="true"><use href="#' + s.icon + '"/></svg>' + s.label + '</span>';
+  }
+
+  /* ---------- Sekmeler (WAI-ARIA tablist) ---------- */
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function selectTab(tab, focus) {
+    tabs.forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+    });
+    if (focus) tab.focus();
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { selectTab(t, false); });
+    t.addEventListener("keydown", function (e) {
+      var n = null;
+      if (e.key === "ArrowRight") n = tabs[(i + 1) % tabs.length];
+      if (e.key === "ArrowLeft") n = tabs[(i - 1 + tabs.length) % tabs.length];
+      if (e.key === "Home") n = tabs[0];
+      if (e.key === "End") n = tabs[tabs.length - 1];
+      if (n) { e.preventDefault(); selectTab(n, true); }
+    });
+  });
+  document.querySelectorAll("[data-goto]").forEach(function (b) {
+    b.addEventListener("click", function () { selectTab(document.getElementById("tab-" + b.getAttribute("data-goto")), true); });
+  });
+
+  /* ---------- Liste ---------- */
+  var sortKey = "changed", sortDir = "descending";
+  var fStatus = document.getElementById("f-status"), fHub = document.getElementById("f-hub"),
+      fCarrier = document.getElementById("f-carrier"), fDelayed = document.getElementById("f-delayed"),
+      fExc = document.getElementById("f-exc"), q = document.getElementById("q");
+
+  function renderList() {
+    var term = q.value.trim().toUpperCase();
+    var rows = SHIPMENTS.filter(function (s) {
+      if (fStatus.value && s.status !== fStatus.value) return false;
+      if (fHub.value && [s.from, s.to, s.at].indexOf(fHub.value) < 0) return false;
+      if (fCarrier.value === "none" && s.carrier) return false;
+      if (fCarrier.value && fCarrier.value !== "none" && s.carrier !== fCarrier.value) return false;
+      if (fDelayed.checked && !s.delay) return false;
+      if (fExc.checked && !s.exc) return false;
+      if (term && s.tn.indexOf(term) < 0) return false;
+      return true;
+    });
+    rows.sort(function (a, b) {
+      var x = sortKey === "promised" ? a.promised : a.changed, y = sortKey === "promised" ? b.promised : b.changed;
+      return (x < y ? -1 : x > y ? 1 : 0) * (sortDir === "ascending" ? 1 : -1);
+    });
+    var body = document.getElementById("list-body");
+    body.innerHTML = "";
+    if (!rows.length) {
+      var tr = el("tr"); tr.appendChild(el("td", { colspan: "10", style: "height:64px;white-space:normal" }, 'Bu filtrelerle gönderi yok. <button class="btn-link" type="button" id="clear-inline">Filtreleri temizle</button>'));
+      body.appendChild(tr);
+      document.getElementById("clear-inline").addEventListener("click", clearFilters);
+    }
+    rows.forEach(function (s) {
+      var tr = el("tr");
+      tr.innerHTML =
+        '<td><a href="#detay" class="mono" data-tn="' + s.tn + '">' + s.tn + '</a></td>' +
+        '<td>' + statusPill(s.status) + '</td>' +
+        '<td class="num">' + s.promisedLabel + '</td>' +
+        '<td>' + (s.delay ? '<span class="delay"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>' + s.delay + '</span>' : '<span class="muted" aria-label="Gecikme yok">—</span>') + '</td>' +
+        '<td class="mono">' + s.from + ' → ' + s.to + '</td>' +
+        '<td class="mono">' + (s.at || '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (s.carrier ? '<span class="mono">' + s.carrier + '</span>' : '<span class="muted">Kendi ağımız</span>') + '</td>' +
+        '<td class="r num">' + s.pk + '</td>' +
+        '<td>' + (s.exc ? '<span class="exc-count"><svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg>' + s.exc + ' açık</span>' : '<span class="muted" aria-label="İstisna yok">—</span>') + '</td>' +
+        '<td class="num">' + s.shown + '</td>';
+      body.appendChild(tr);
+    });
+    document.getElementById("list-count").textContent = rows.length + " gönderi gösteriliyor (Demo; gerçek ekranda sayfa başına 50, toplam sayı hesaplanmaz)";
+    renderChips();
+  }
+
+  function renderChips() {
+    var box = document.getElementById("active-filters");
+    box.innerHTML = "";
+    var chips = [];
+    if (fStatus.value) chips.push(["Durum: " + STATUS[fStatus.value].label, function () { fStatus.value = ""; }]);
+    if (fHub.value) chips.push(["Hub: " + fHub.value, function () { fHub.value = ""; }]);
+    if (fCarrier.value) chips.push(["Carrier: " + (fCarrier.value === "none" ? "Kendi ağımız" : fCarrier.value), function () { fCarrier.value = ""; }]);
+    if (fDelayed.checked) chips.push(["Gecikmiş", function () { fDelayed.checked = false; }]);
+    if (fExc.checked) chips.push(["Açık istisna", function () { fExc.checked = false; }]);
+    if (q.value.trim()) chips.push(["Arama: " + q.value.trim(), function () { q.value = ""; }]);
+    if (!chips.length) { box.appendChild(el("span", { "class": "muted" }, "Filtre yok")); return; }
+    box.appendChild(el("span", { "class": "muted" }, "Aktif filtreler:"));
+    chips.forEach(function (c) {
+      var chip = el("span", { "class": "chip" });
+      chip.appendChild(document.createTextNode(c[0]));
+      var b = el("button", { type: "button", "aria-label": c[0] + " filtresini kaldır" }, "×");
+      b.addEventListener("click", function () { c[1](); renderList(); });
+      chip.appendChild(b);
+      box.appendChild(chip);
+    });
+    var clear = el("button", { type: "button", "class": "btn-link" }, "Filtreleri temizle");
+    clear.addEventListener("click", clearFilters);
+    box.appendChild(clear);
+  }
+  function clearFilters() {
+    fStatus.value = ""; fHub.value = ""; fCarrier.value = ""; fDelayed.checked = false; fExc.checked = false; q.value = "";
+    renderList();
+  }
+  [fStatus, fHub, fCarrier, fDelayed, fExc].forEach(function (c) { c.addEventListener("change", renderList); });
+  q.addEventListener("input", renderList);
+  document.querySelectorAll('[data-apply="delayed"]').forEach(function (b) {
+    b.addEventListener("click", function () { fDelayed.checked = true; renderList(); });
+  });
+  document.querySelectorAll("th[data-sort] .sort").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var th = btn.parentNode, key = th.getAttribute("data-sort");
+      if (sortKey === key) sortDir = sortDir === "ascending" ? "descending" : "ascending";
+      else { sortKey = key; sortDir = key === "promised" ? "ascending" : "descending"; }
+      document.querySelectorAll("th[data-sort]").forEach(function (h) {
+        h.setAttribute("aria-sort", h.getAttribute("data-sort") === sortKey ? sortDir : "none");
+      });
+      renderList();
+    });
+  });
+  document.addEventListener("keydown", function (e) {
+    var t = e.target, typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT");
+    if (e.key === "/" && !typing) { e.preventDefault(); selectTab(document.getElementById("tab-list"), false); q.focus(); }
+  });
+
+  /* ---------- Detay ---------- */
+  document.getElementById("list-body").addEventListener("click", function (e) {
+    var a = e.target.closest("a[data-tn]");
+    if (!a) return;
+    e.preventDefault();
+    openDetail(a.getAttribute("data-tn"));
+  });
+  function openDetail(tn) {
+    var s = SHIPMENTS.filter(function (x) { return x.tn === tn; })[0];
+    var full = tn === "LS4829105735";
+    document.getElementById("d-tn").textContent = s.tn;
+    document.getElementById("d-status").innerHTML = statusPill(s.status);
+    document.getElementById("d-service").textContent = s.service;
+    document.getElementById("d-promised").textContent = s.promisedLabel;
+    document.getElementById("d-route").textContent = s.from + " → " + s.to;
+    document.getElementById("d-delay").innerHTML = s.delay ? '<span class="delay"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>' + s.delay + ' gecikti</span>' : '';
+    document.getElementById("d-timeline").hidden = !full;
+    document.getElementById("d-timeline-empty").hidden = full;
+    document.getElementById("d-exc").hidden = !full;
+    document.getElementById("d-side").hidden = !full;
+    selectTab(document.getElementById("tab-detail"), true);
+  }
+  openDetail("LS4829105735");
+  selectTab(document.getElementById("tab-list"), false);
+
+  document.querySelectorAll("[data-tl]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var onlyApplied = b.getAttribute("data-tl") === "applied";
+      document.querySelectorAll("[data-tl]").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      document.querySelectorAll('#d-timeline [data-outcome="stale"]').forEach(function (li) { li.hidden = onlyApplied; });
+    });
+  });
+  var rtsOpen = document.getElementById("rts-open"), rtsPanel = document.getElementById("rts-panel");
+  rtsOpen.addEventListener("click", function () {
+    rtsPanel.hidden = !rtsPanel.hidden;
+    rtsOpen.setAttribute("aria-expanded", String(!rtsPanel.hidden));
+    if (!rtsPanel.hidden) document.getElementById("rts-reason").focus();
+  });
+  document.getElementById("rts-cancel").addEventListener("click", function () { rtsPanel.hidden = true; rtsOpen.setAttribute("aria-expanded", "false"); rtsOpen.focus(); });
+  rtsPanel.addEventListener("submit", function (e) { e.preventDefault(); });
+
+  /* ---------- İstisna kuyruğu ---------- */
+  var excView = "all", excSelected = -1, excOpen = -1;
+  function renderExc() {
+    var body = document.getElementById("exc-body");
+    body.innerHTML = "";
+    var list = EXCEPTIONS.map(function (x, i) { return { x: x, i: i }; }).filter(function (r) {
+      if (excView === "mine") return r.x.mine;
+      if (excView === "unassigned") return !r.x.owner;
+      if (excView === "resolved") return false;
+      return true;
+    });
+    if (!list.length) {
+      var tr = el("tr"); tr.appendChild(el("td", { colspan: "9", style: "height:64px;white-space:normal" }, excView === "resolved" ? "Demo'da çözülen istisna listesi çizilmedi." : "Bu görünümde istisna yok."));
+      body.appendChild(tr); return;
+    }
+    list.forEach(function (r) {
+      var x = r.x, s = STATUS[x.status];
+      var tr = el("tr", { tabindex: "-1", "data-i": r.i, "aria-selected": r.i === excSelected ? "true" : "false" });
+      tr.innerHTML =
+        '<td><span class="sev ' + (x.sev === "High" ? "sev-high" : "sev-medium") + '"><svg class="icon" aria-hidden="true"><use href="#i-diamond"/></svg>' + (x.sev === "High" ? "Yüksek" : "Orta") + '</span></td>' +
+        '<td>' + x.type + (x.occ > 1 ? ' <span class="muted num">×' + x.occ + '</span>' : '') + '</td>' +
+        '<td class="mono">' + x.tn + '</td>' +
+        '<td>' + statusPill(x.status) + '</td>' +
+        '<td class="mono">' + (x.hub || '<span class="muted">—</span>') + '</td>' +
+        '<td class="num">' + x.opened + '</td>' +
+        '<td class="num">' + (x.overdue ? '<span class="overdue"><svg class="icon" aria-hidden="true" style="vertical-align:-2px"><use href="#i-clock"/></svg> ' + x.overdue + '</span>' : x.due) + '</td>' +
+        '<td>' + (x.owner || '<span class="muted">Sahipsiz</span>') + '</td>' +
+        '<td>' + (x.owner ? '<button class="btn" type="button" data-open="' + r.i + '" aria-expanded="' + (excOpen === r.i) + '">İncele</button>' : '<button class="btn" type="button" data-open="' + r.i + '" aria-expanded="' + (excOpen === r.i) + '">Üzerime al</button>') + '</td>';
+      body.appendChild(tr);
+      if (excOpen === r.i) {
+        var rr = el("tr", { "class": "resolve-row" });
+        var opts = x.codes.map(function (c) { return "<option>" + c + "</option>"; }).join("");
+        rr.innerHTML = '<td colspan="9"><form class="resolve" data-form="' + r.i + '">' +
+          '<div class="full"><span class="section-label">Bağlam</span><p style="margin:4px 0 0">' + x.context + '</p></div>' +
+          '<div><label for="res-code-' + r.i + '">Çözüm</label><select id="res-code-' + r.i + '">' + opts + '</select></div>' +
+          '<div><label for="res-note-' + r.i + '">Not (zorunlu)</label><textarea id="res-note-' + r.i + '"></textarea></div>' +
+          '<div class="full actions"><button class="btn btn-primary" type="submit">Çözümü kaydet</button><button class="btn" type="button" data-close="1">Kapat</button>' +
+          '<span class="muted" style="font-size:var(--fs-xs)">Demo: kayıt yapılmaz. Gönderi işlemi tetikleyen çözümler (iade, olayı uygula) gönderi komutuyla aynı transaction\'da çalışır.</span></div>' +
+          '</form></td>';
+        body.appendChild(rr);
+      }
+    });
+  }
+  function openExc(i) { excOpen = excOpen === i ? -1 : i; excSelected = i; renderExc(); var f = document.getElementById("res-code-" + i); if (f) f.focus(); }
+  var excBody = document.getElementById("exc-body");
+  excBody.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-open]");
+    if (b) { openExc(+b.getAttribute("data-open")); return; }
+    if (e.target.closest("[data-close]")) { var i = excOpen; excOpen = -1; renderExc(); focusRow(i); return; }
+    var tr = e.target.closest("tr[data-i]");
+    if (tr) { excSelected = +tr.getAttribute("data-i"); renderExc(); focusRow(excSelected); }
+  });
+  excBody.addEventListener("submit", function (e) { e.preventDefault(); });
+  function focusRow(i) { var r = excBody.querySelector('tr[data-i="' + i + '"]'); if (r) r.focus(); }
+  excBody.addEventListener("keydown", function (e) {
+    var t = e.target;
+    if (e.key === "Escape" && excOpen >= 0) { var i = excOpen; excOpen = -1; renderExc(); focusRow(i); return; }
+    if (!t.matches || !t.matches("tr[data-i]")) return;
+    var rows = Array.prototype.slice.call(excBody.querySelectorAll("tr[data-i]"));
+    var idx = rows.indexOf(t);
+    if (e.key === "ArrowDown" && idx < rows.length - 1) { e.preventDefault(); excSelected = +rows[idx + 1].getAttribute("data-i"); renderExc(); focusRow(excSelected); }
+    if (e.key === "ArrowUp" && idx > 0) { e.preventDefault(); excSelected = +rows[idx - 1].getAttribute("data-i"); renderExc(); focusRow(excSelected); }
+    if (e.key === "Enter") { e.preventDefault(); openExc(+t.getAttribute("data-i")); }
+  });
+  document.querySelectorAll(".subtab").forEach(function (b) {
+    b.addEventListener("click", function () {
+      excView = b.getAttribute("data-view"); excOpen = -1; excSelected = -1;
+      document.querySelectorAll(".subtab").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      renderExc();
+    });
+  });
+
+  /* ---------- Tema ---------- */
+  var themeBtn = document.getElementById("theme-toggle");
+  function currentDark() {
+    var a = document.documentElement.getAttribute("data-theme");
+    if (a) return a === "dark";
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function syncThemeBtn() { var d = currentDark(); themeBtn.textContent = d ? "Açık tema" : "Koyu tema"; themeBtn.setAttribute("aria-pressed", String(d)); }
+  themeBtn.addEventListener("click", function () {
+    document.documentElement.setAttribute("data-theme", currentDark() ? "light" : "dark");
+    syncThemeBtn();
+  });
+  syncThemeBtn();
+
+  renderList();
+  renderExc();
+})();
+</script>
+</body>
+</html>

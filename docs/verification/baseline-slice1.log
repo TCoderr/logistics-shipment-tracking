@@ -1,0 +1,22 @@
+﻿== build
+Oluşturma başarılı oldu.
+    0 Uyarı
+    0 Hata
+build_exit=0
+== unit
+Test çalıştırması özeti: Başarılı!
+  toplam: 58
+  başarısız oldu: 0
+  başarılı: 58
+  atlandı: 0
+  süre: 1s 610ms
+unit_exit=0
+== integration
+
+Test çalıştırması özeti: Başarılı!
+  toplam: 29
+  başarısız oldu: 0
+  başarılı: 29
+  atlandı: 0
+  süre: 20s 734ms
+integration_exit=0

@@ -1,0 +1,35 @@
+# Kesinti sonrasi mevcut kaynagin yeniden dogrulanmasi (Dilim 1-8 regresyonu) - 2026-10-10T10:26:05Z
+== fingerprint
+files=196 sha256=8d9ae0f56818c31a47ab9eabc87bcddbbc559e42324f9cb848f816384a9fc398
+== tool restore
+
+Geri yükleme başarılı oldu.
+exit=0
+== locked restore
+lock-errors=0
+exit=0
+== build Release
+    0 Hata
+    0 Uyarı
+exit=0
+== pending model
+No changes have been made to the model since the last migration.
+exit=0
+== unit
+D:\Logistics & Shipment Tracking System\logistics-shipment-tracking\tests\Lst.UnitTests\bin\Release\net10.0\Lst.UnitTests.dll (net10.0|x64) başarılı (5s 324ms)
+Test çalıştırması özeti: Başarılı!
+  toplam: 169
+  başarısız oldu: 0
+  başarılı: 169
+  atlandı: 0
+  süre: 10s 136ms
+exit=0
+== integration
+D:\Logistics & Shipment Tracking System\logistics-shipment-tracking\tests\Lst.IntegrationTests\bin\Release\net10.0\Lst.IntegrationTests.dll (net10.0|x64) başarılı (1m 28s 915ms)
+Test çalıştırması özeti: Başarılı!
+  toplam: 107
+  başarısız oldu: 0
+  başarılı: 107
+  atlandı: 0
+  süre: 1m 33s 386ms
+exit=0

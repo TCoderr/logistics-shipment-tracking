@@ -1,0 +1,36 @@
+== locked restore
+lock-errors=0
+exit=0
+== build Release
+    0 Uyarı
+    0 Hata
+exit=0
+== pending model
+No changes have been made to the model since the last migration.
+exit=0
+== unit
+  toplam: 169
+  başarısız oldu: 0
+  başarılı: 169
+  atlandı: 0
+  süre: 2s 068ms
+exit=0
+== integration run 1
+Test çalıştırması özeti: Başarılı!
+  toplam: 107
+  başarısız oldu: 0
+  başarılı: 107
+  atlandı: 0
+  süre: 26s 422ms
+exit=0
+== integration run 2
+Test çalıştırması özeti: Başarılı!
+  toplam: 107
+  başarısız oldu: 0
+  başarılı: 107
+  atlandı: 0
+  süre: 27s 309ms
+exit=0
+== docker build
+sha256:43acff5843aca9ee0dea7d934975ae78c659115fc8baf21057dc1ca4f530fbda
+exit=0

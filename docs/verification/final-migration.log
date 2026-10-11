@@ -1,0 +1,17 @@
+{"check": "migration script'leri üretildi", "ok": true, "detail": "migrations=7"}
+{"check": "tek kullanımlık PostgreSQL 18", "ok": true, "detail": "18.6 (Debian 18.6-1.pgdg13+2)"}
+{"check": "boş DB: idempotent script ile kurulum", "ok": true, "detail": "history=7"}
+{"check": "boş DB: script ikinci kez uygulanınca şema değişmez", "ok": true, "detail": ""}
+{"check": "Dilim 1 → son: yükseltme hatasız", "ok": true, "detail": "history 1 → 7"}
+{"check": "Dilim 1 → son: tüm migration'lar uygulandı", "ok": true, "detail": "history=7"}
+{"check": "Dilim 1 → son: gönderi korundu, yeni kolonlar varsayılanla doldu", "ok": true, "detail": "LS0000000018|Created|false|0|true"}
+{"check": "Dilim 1 → son: taraflar, koli, olay, hub korundu; referans veri eklendi", "ok": true, "detail": "2|1|1|2|1"}
+{"check": "Dilim 1 → son: şema yeni kurulumla aynı", "ok": true, "detail": ""}
+{"check": "Dilim 1 → son: yeniden uygulama değişiklik yapmaz", "ok": true, "detail": ""}
+{"check": "Dilim 5 → son: yükseltme hatasız", "ok": true, "detail": "history 4 → 7"}
+{"check": "Dilim 5 → son: tüm migration'lar uygulandı", "ok": true, "detail": "history=7"}
+{"check": "Dilim 5 → son: gönderi korundu, yeni kolonlar varsayılanla doldu", "ok": true, "detail": "LS0000000018|Created|false|0|true"}
+{"check": "Dilim 5 → son: taraflar, koli, olay, hub korundu; referans veri eklendi", "ok": true, "detail": "2|1|1|2|1"}
+{"check": "Dilim 5 → son: şema yeni kurulumla aynı", "ok": true, "detail": ""}
+{"check": "Dilim 5 → son: yeniden uygulama değişiklik yapmaz", "ok": true, "detail": ""}
+{"checks": 16, "passed": 16}

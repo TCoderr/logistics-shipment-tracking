@@ -1,0 +1,18 @@
+﻿== pending model
+No changes have been made to the model since the last migration.
+exit=0
+== unit
+  toplam: 72
+  başarısız oldu: 0
+  başarılı: 72
+  atlandı: 0
+  süre: 1s 163ms
+exit=0
+== integration
+Test çalıştırması özeti: Başarılı!
+  toplam: 48
+  başarısız oldu: 0
+  başarılı: 48
+  atlandı: 0
+  süre: 17s 217ms
+exit=0

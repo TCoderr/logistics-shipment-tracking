@@ -1,0 +1,20 @@
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+TestResults/
+*.trx
+.env
+http-client.private.env.json
+
+.local*/
+*.pfx
+artifacts/
+
+# Web (src/web)
+node_modules/
+dist/
+playwright-report/
+test-results/
+*.tsbuildinfo

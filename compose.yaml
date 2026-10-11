@@ -1,0 +1,104 @@
+# LST yerel yığın: PostgreSQL 18 + tek seferlik migrator + HTTPS API.
+# Hazırlık ve çalıştırma: scripts/local-stack.ps1 (secret'ları ve sertifikayı LST_LOCAL_DIR altına üretir; repoya girmez).
+# İzole koşu: farklı proje adı (-p) ve LST_LOCAL_DIR; volume'lar proje adıyla ön eklenir.
+
+services:
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_DB: lst
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_superuser_password
+      LST_OWNER_PASSWORD_FILE: /run/secrets/lst_owner_password
+      LST_APP_PASSWORD_FILE: /run/secrets/lst_app_password
+    secrets:
+      - postgres_superuser_password
+      - lst_owner_password
+      - lst_app_password
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lst -h 127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lst-api:local
+    command: ["--migrate"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${LST_ENVIRONMENT:-Development}
+      Database__RuntimeRole: lst_app
+      # Demo verisi açık opt-in (yalnız Development'ta kabul edilir); parolalar ${LST_LOCAL_DIR}/seed altındaki özel dosyalardan.
+      Seed__Enabled: ${LST_SEED_DEMO:-false}
+    secrets:
+      - source: lst_migrator_connection
+        target: ConnectionStrings__LstMigrator
+    volumes:
+      - ${LST_LOCAL_DIR:-./.local}/seed:/run/lst-seed:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: lst-api:local
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${LST_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: https://+:8443
+      Kestrel__Certificates__Default__Path: /https/lst-dev.pfx
+      DataProtection__KeysPath: /var/lib/lst/dataprotection
+      # Compose yığınında API migration/seed yapmaz; bunu migrator yapar.
+      Database__MigrateOnStartup: "false"
+      Seed__Enabled: "false"
+      # Carrier simülatörü açık opt-in; yalnız Development'ta kabul edilir (aksi halde API başlamaz).
+      Simulation__Enabled: ${LST_SIMULATION:-false}
+      Simulation__BaseUrl: https://localhost:8443
+    secrets:
+      - source: lst_app_connection
+        target: ConnectionStrings__Lst
+      - source: simex_webhook_secret
+        target: Carriers__Secrets__SIMEX__Values__0
+      - source: https_certificate_password
+        target: Kestrel__Certificates__Default__Password
+    volumes:
+      - dpkeys:/var/lib/lst/dataprotection
+      - ${LST_LOCAL_DIR:-./.local}/certs:/https:ro
+    ports:
+      - "127.0.0.1:${LST_HTTPS_PORT:-8443}:8443"
+    healthcheck:
+      test: ["CMD", "dotnet", "/app/Lst.Api.dll", "--probe", "https://localhost:8443/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  dpkeys:
+
+secrets:
+  postgres_superuser_password:
+    file: ${LST_LOCAL_DIR:-./.local}/secrets/postgres_superuser_password
+  lst_owner_password:
+    file: ${LST_LOCAL_DIR:-./.local}/secrets/lst_owner_password
+  lst_app_password:
+    file: ${LST_LOCAL_DIR:-./.local}/secrets/lst_app_password
+  lst_migrator_connection:
+    file: ${LST_LOCAL_DIR:-./.local}/secrets/migrator_connection
+  lst_app_connection:
+    file: ${LST_LOCAL_DIR:-./.local}/secrets/app_connection
+  https_certificate_password:
+    file: ${LST_LOCAL_DIR:-./.local}/secrets/https_certificate_password
+  simex_webhook_secret:
+    file: ${LST_LOCAL_DIR:-./.local}/secrets/simex_webhook_secret

@@ -1,0 +1,71 @@
+# LST Dilim 1 — elle doğrulama (M1). Gizli bilgi içermez.
+# Parola bu dosyada yazılmaz: http-client.private.env.json (git'e girmez) içinde "password" değişkeni tanımlayın, örn.
+#   { "dev": { "password": "<user-secrets'ta Seed:Passwords:ops.agent için verdiğiniz değer>" } }
+# Uygulama HTTPS profilde çalışır (dotnet run --project src/Lst.Api --launch-profile https).
+
+@baseUrl = https://localhost:7210
+@userName = ops.agent
+# Her yeni gönderi için değiştirin; replay denemesi için aynı bırakın.
+@idempotencyKey = manual-slice1-0000000001
+
+### 1) Oturum öncesi CSRF bootstrap (antiforgery cookie + anonim token)
+# @name csrf
+GET {{baseUrl}}/api/auth/csrf
+
+### 2) Login (anonim CSRF token ile)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrf.response.body.$.csrfToken}}
+
+{ "userName": "{{userName}}", "password": "{{password}}" }
+
+### 3) Oturum sonrası kimlikli CSRF token, roller ve hub'lar
+# @name me
+GET {{baseUrl}}/api/auth/me
+
+### 4) Gönderi oluştur
+# @name create
+POST {{baseUrl}}/api/shipments
+Content-Type: application/json
+Idempotency-Key: {{idempotencyKey}}
+X-CSRF-TOKEN: {{me.response.body.$.csrfToken}}
+
+{
+  "serviceLevel": "Standard",
+  "externalReference": "ORD-2026-100245",
+  "originHubCode": "IST-01",
+  "destinationHubCode": "ANK-02",
+  "sender": {
+    "fullName": "Deniz Kaya",
+    "companyName": "Kaya Tekstil Ltd.",
+    "phone": "+902124445566",
+    "email": "lojistik@kayatekstil.example",
+    "address": { "line1": "Atatürk Cd. No: 12", "district": "Bağcılar", "city": "İstanbul", "postalCode": "34200", "countryCode": "TR" }
+  },
+  "recipient": {
+    "fullName": "Ece Yılmaz",
+    "phone": "+905321234567",
+    "address": { "line1": "Kızılay Mh. 5. Sk. No: 3 D: 7", "district": "Çankaya", "city": "Ankara", "postalCode": "06420", "countryCode": "TR" }
+  },
+  "packages": [
+    { "weightGrams": 2400, "lengthMm": 400, "widthMm": 300, "heightMm": 200, "contentDescription": "Tekstil" },
+    { "weightGrams": 900, "lengthMm": 300, "widthMm": 200, "heightMm": 100 }
+  ],
+  "declaredValue": { "amount": 1850.00, "currency": "TRY" }
+}
+
+### 5) Replay: aynı anahtar + aynı gövde → aynı 201 gövdesi + Idempotency-Replayed: true
+# (4. isteği aynen tekrar gönderin.)
+
+### 6) Yetkili detay okuma (Location'dan)
+GET {{baseUrl}}{{create.response.headers.Location}}
+
+### 7) Logout (kimlikli CSRF token ile)
+POST {{baseUrl}}/api/auth/logout
+X-CSRF-TOKEN: {{me.response.body.$.csrfToken}}
+
+### OpenAPI (yalnız Development)
+GET {{baseUrl}}/openapi/v1.json
+
+### Health
+GET {{baseUrl}}/health/ready

@@ -1,0 +1,6 @@
+# Test projeleri: okunabilir test adları (alt çizgi) ve test sınıflarının public olması xUnit gereğidir.
+[*.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1515.severity = none
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1861.severity = none

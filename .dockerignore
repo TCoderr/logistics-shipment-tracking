@@ -1,0 +1,24 @@
+# Image'a yalnız derleme için gerekenler girer. Secret, sertifika, yerel durum ve test çıktıları hariç.
+**/bin/
+**/obj/
+**/TestResults/
+**/node_modules/
+**/dist/
+**/playwright-report/
+**/test-results/
+**/*.user
+**/.vs/
+**/.vscode/
+.git/
+.github/
+.local*/
+.env
+*.pfx
+*.pem
+*.key
+docs/
+design/
+requests/
+scripts/
+tests/
+deploy/

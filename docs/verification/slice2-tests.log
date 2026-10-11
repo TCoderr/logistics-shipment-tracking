@@ -1,0 +1,20 @@
+﻿== unit
+Test çalıştırması özeti: Başarılı!
+  toplam: 58
+  başarısız oldu: 0
+  başarılı: 58
+  atlandı: 0
+  süre: 1s 397ms
+unit_exit=0
+== integration
+
+
+Test çalıştırması özeti: Başarılı!
+  toplam: 29
+  başarısız oldu: 0
+  başarılı: 29
+  atlandı: 0
+  süre: 17s 266ms
+
+
+integration_exit=0

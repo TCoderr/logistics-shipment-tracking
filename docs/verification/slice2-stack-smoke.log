@@ -1,0 +1,21 @@
+﻿{"check": "health.live", "ok": true, "detail": ""}
+{"check": "health.ready", "ok": true, "detail": ""}
+{"check": "csrf.anonymous", "ok": true, "detail": ""}
+{"check": "login.wrong_password_generic_401", "ok": true, "detail": ""}
+{"check": "login.without_csrf_rejected", "ok": true, "detail": ""}
+{"check": "login.ok", "ok": true, "detail": "cookies=['__Host-lst.af', '__Host-lst.auth']"}
+{"check": "me.authenticated_token", "ok": true, "detail": ""}
+{"check": "create.201", "ok": true, "detail": ""}
+{"check": "replay.identical", "ok": true, "detail": ""}
+{"check": "detail.etag_matches", "ok": true, "detail": ""}
+{"check": "runtime_role.denied[UPDATE]", "ok": true, "detail": ""}
+{"check": "runtime_role.denied[DELETE]", "ok": true, "detail": ""}
+{"check": "runtime_role.denied[TRUNCATE]", "ok": true, "detail": ""}
+{"check": "runtime_role.can_read_audit", "ok": true, "detail": ""}
+{"check": "api.recreated_ready", "ok": true, "detail": ""}
+{"check": "api.recreated_cookie_and_data_preserved", "ok": true, "detail": ""}
+{"check": "outage.ready_503", "ok": true, "detail": ""}
+{"check": "outage.live_200", "ok": true, "detail": ""}
+{"check": "recovery.ready_200", "ok": true, "detail": ""}
+{"check": "recovery.detail_200", "ok": true, "detail": ""}
+{"summary": {"passed": 20, "total": 20}}

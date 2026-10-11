@@ -1,0 +1,214 @@
+﻿# lst-e2e izole yigin (Dilim 9 E2E) - 2026-10-10T10:54:17Z
+Hazır: .local-e2e (secrets, certs, seed). Değerler ekrana yazılmadı.
+init exit=0
+ Image lst-api:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 606B 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.77kB 0.0s done
+#2 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 ...
+
+#4 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 DONE 1.2s
+
+#5 docker-image://docker.io/docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
+#5 resolve docker.io/docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e 0.0s done
+#5 CACHED
+
+#6 [internal] load metadata for mcr.microsoft.com/dotnet/aspnet:10.0.12
+#6 DONE 0.5s
+
+#7 [auth] library/node:pull token for registry-1.docker.io
+#7 DONE 0.0s
+
+#8 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0.401
+#8 DONE 0.5s
+
+#9 [internal] load metadata for docker.io/library/node:24.18.0-bookworm-slim
+#9 DONE 1.7s
+
+#10 [internal] load .dockerignore
+#10 transferring context: 375B 0.0s done
+#10 DONE 0.0s
+
+#11 [build  1/13] FROM mcr.microsoft.com/dotnet/sdk:10.0.401@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317
+#11 resolve mcr.microsoft.com/dotnet/sdk:10.0.401@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317 0.0s done
+#11 DONE 0.0s
+
+#12 [runtime 1/5] FROM mcr.microsoft.com/dotnet/aspnet:10.0.12@sha256:222759b391a1aaf241166672c8f99b2d4ada452e7b5319f3c6e8f265a37b5ad4
+#12 resolve mcr.microsoft.com/dotnet/aspnet:10.0.12@sha256:222759b391a1aaf241166672c8f99b2d4ada452e7b5319f3c6e8f265a37b5ad4 0.0s done
+#12 DONE 0.0s
+
+#13 [web 1/6] FROM docker.io/library/node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d
+#13 resolve docker.io/library/node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d 0.0s done
+#13 DONE 0.1s
+
+#14 [internal] load build context
+#14 transferring context: 431.15kB 0.1s done
+#14 DONE 0.1s
+
+#15 [build  2/13] WORKDIR /src
+#15 CACHED
+
+#16 [build  5/13] COPY src/Lst.Api/Lst.Api.csproj src/Lst.Api/packages.lock.json src/Lst.Api/
+#16 CACHED
+
+#17 [build  6/13] COPY src/Lst.Platform/Lst.Platform.csproj src/Lst.Platform/packages.lock.json src/Lst.Platform/
+#17 CACHED
+
+#18 [build  8/13] COPY src/Lst.Modules.Shipments/Lst.Modules.Shipments.csproj src/Lst.Modules.Shipments/packages.lock.json src/Lst.Modules.Shipments/
+#18 CACHED
+
+#19 [build  3/13] COPY global.json Directory.Build.props Directory.Packages.props ./
+#19 CACHED
+
+#20 [build  9/13] COPY src/Lst.Modules.Operations/Lst.Modules.Operations.csproj src/Lst.Modules.Operations/packages.lock.json src/Lst.Modules.Operations/
+#20 CACHED
+
+#21 [build 10/13] COPY src/Lst.Modules.Tracking/Lst.Modules.Tracking.csproj src/Lst.Modules.Tracking/packages.lock.json src/Lst.Modules.Tracking/
+#21 CACHED
+
+#22 [build  4/13] COPY db/runtime-role-grants.sql db/
+#22 CACHED
+
+#23 [build  7/13] COPY src/Lst.Modules.Identity/Lst.Modules.Identity.csproj src/Lst.Modules.Identity/packages.lock.json src/Lst.Modules.Identity/
+#23 CACHED
+
+#24 [build 11/13] RUN dotnet restore src/Lst.Api/Lst.Api.csproj --locked-mode
+#24 CACHED
+
+#25 [build 12/13] COPY src/ src/
+#25 DONE 0.1s
+
+#26 [build 13/13] RUN dotnet publish src/Lst.Api/Lst.Api.csproj -c Release -o /app/publish --no-restore -p:UseAppHost=false
+#26 ...
+
+#13 [web 1/6] FROM docker.io/library/node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d
+#13 sha256:3f4664f9b20d6f144b2674c2c40de02509aabd87eae0a2d31a62de37444d13e8 448B / 448B 0.2s done
+#13 sha256:15f27b93c93d3aaa4df09438a96bad3709b6cbbc38659014d17cc61d8d4fabb9 1.71MB / 1.71MB 0.5s done
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 14.68MB / 50.33MB 5.4s
+#13 sha256:af54a8f1f08bff19af42c05615745e74742a74437bb1c5e1e99bf0dcb8048257 3.31kB / 3.31kB 0.5s done
+#13 sha256:597c6c618d36213af657a6a8444a5d87801f9a219682b206ad21ccb8f3e57bbd 18.87MB / 28.23MB 5.1s
+#13 sha256:597c6c618d36213af657a6a8444a5d87801f9a219682b206ad21ccb8f3e57bbd 20.97MB / 28.23MB 5.6s
+#13 sha256:597c6c618d36213af657a6a8444a5d87801f9a219682b206ad21ccb8f3e57bbd 23.07MB / 28.23MB 6.2s
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 17.83MB / 50.33MB 6.6s
+#13 sha256:597c6c618d36213af657a6a8444a5d87801f9a219682b206ad21ccb8f3e57bbd 25.17MB / 28.23MB 6.9s
+#13 ...
+
+#26 [build 13/13] RUN dotnet publish src/Lst.Api/Lst.Api.csproj -c Release -o /app/publish --no-restore -p:UseAppHost=false
+#26 DONE 7.3s
+
+#27 [runtime 2/5] WORKDIR /app
+#27 CACHED
+
+#28 [runtime 3/5] RUN mkdir -p /var/lib/lst/dataprotection     && chown -R "1654" /var/lib/lst     && chmod 0700 /var/lib/lst/dataprotection
+#28 CACHED
+
+#29 [runtime 4/5] COPY --from=build --chown=root:root /app/publish/ ./
+#29 DONE 0.0s
+
+#13 [web 1/6] FROM docker.io/library/node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 20.97MB / 50.33MB 7.7s
+#13 sha256:597c6c618d36213af657a6a8444a5d87801f9a219682b206ad21ccb8f3e57bbd 27.26MB / 28.23MB 7.7s
+#13 sha256:597c6c618d36213af657a6a8444a5d87801f9a219682b206ad21ccb8f3e57bbd 28.23MB / 28.23MB 7.9s done
+#13 extracting sha256:597c6c618d36213af657a6a8444a5d87801f9a219682b206ad21ccb8f3e57bbd
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 24.12MB / 50.33MB 8.6s
+#13 extracting sha256:597c6c618d36213af657a6a8444a5d87801f9a219682b206ad21ccb8f3e57bbd 0.6s done
+#13 extracting sha256:af54a8f1f08bff19af42c05615745e74742a74437bb1c5e1e99bf0dcb8048257 0.0s done
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 27.26MB / 50.33MB 9.0s
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 30.41MB / 50.33MB 9.5s
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 33.55MB / 50.33MB 10.1s
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 36.70MB / 50.33MB 10.7s
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 39.85MB / 50.33MB 11.1s
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 42.99MB / 50.33MB 11.7s
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 46.14MB / 50.33MB 12.2s
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 49.28MB / 50.33MB 12.8s
+#13 sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 50.33MB / 50.33MB 12.9s done
+#13 extracting sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920
+#13 extracting sha256:35e38e1826d7cdf22ea45a4223741e4cc126db5a2a07cf2072b229270180f920 0.8s done
+#13 DONE 13.8s
+
+#13 [web 1/6] FROM docker.io/library/node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d
+#13 extracting sha256:15f27b93c93d3aaa4df09438a96bad3709b6cbbc38659014d17cc61d8d4fabb9 0.0s done
+#13 extracting sha256:3f4664f9b20d6f144b2674c2c40de02509aabd87eae0a2d31a62de37444d13e8 0.0s done
+#13 DONE 13.8s
+
+#30 [web 2/6] WORKDIR /web
+#30 DONE 0.2s
+
+#31 [web 3/6] COPY src/web/package.json src/web/package-lock.json ./
+#31 DONE 0.0s
+
+#32 [web 4/6] RUN npm ci --no-audit --no-fund
+#32 DONE 7.9s
+
+#33 [web 5/6] COPY src/web/ ./
+#33 DONE 0.1s
+
+#34 [web 6/6] RUN npm run build
+#34 DONE 2.8s
+
+#35 [runtime 5/5] COPY --from=web --chown=root:root /web/dist/ ./wwwroot/
+#35 DONE 0.0s
+
+#36 exporting to image
+#36 exporting layers
+#36 exporting layers 0.3s done
+#36 exporting manifest sha256:102404aa72319e40b08b2a14d1080efe13e2e29336cf2e13c501f51064f05408 done
+#36 exporting config sha256:16d70e844dd777f3fdaf5fe467d196fe381d54eb0f28bde4c4fdbe5225872d76 done
+#36 exporting attestation manifest sha256:2fc27d3d9ecb431ab2c6c556aae317a7f8ebe352190b99cfbdee09822a78171c 0.0s done
+#36 exporting manifest list sha256:0eea11cdea63758e913e9298586411a1acba69c5b6cd46cbbf02eb921b791580 done
+#36 naming to docker.io/library/lst-api:local done
+#36 unpacking to docker.io/library/lst-api:local 0.1s done
+#36 DONE 0.5s
+
+#37 resolving provenance for metadata file
+#37 DONE 0.0s
+ Image lst-api:local Built 
+ Network lst-e2e_default Creating 
+ Volume lst-e2e_pgdata Creating 
+ Volume lst-e2e_dpkeys Creating 
+ Volume lst-e2e_dpkeys Creating 
+ Volume lst-e2e_pgdata Creating 
+ Network lst-e2e_default Creating 
+ Volume lst-e2e_pgdata Created 
+ Volume lst-e2e_pgdata Created 
+ Volume lst-e2e_dpkeys Created 
+ Volume lst-e2e_dpkeys Created 
+ Network lst-e2e_default Created 
+ Network lst-e2e_default Created 
+ Container lst-e2e-postgres-1 Creating 
+ Container lst-e2e-postgres-1 Created 
+ Container lst-e2e-migrator-1 Creating 
+ Container lst-e2e-migrator-1 Created 
+ Container lst-e2e-api-1 Creating 
+ Container lst-e2e-api-1 Created 
+ Container lst-e2e-postgres-1 Starting 
+ Container lst-e2e-postgres-1 Started 
+ Container lst-e2e-postgres-1 Waiting 
+ Container lst-e2e-postgres-1 Healthy 
+ Container lst-e2e-migrator-1 Starting 
+ Container lst-e2e-migrator-1 Started 
+ Container lst-e2e-migrator-1 Waiting 
+ Container lst-e2e-migrator-1 Exited 
+ Container lst-e2e-api-1 Starting 
+ Container lst-e2e-api-1 Started 
+ Container lst-e2e-migrator-1 Waiting 
+ Container lst-e2e-api-1 Waiting 
+ Container lst-e2e-postgres-1 Waiting 
+ Container lst-e2e-migrator-1 Exited 
+ Container lst-e2e-postgres-1 Healthy 
+ Container lst-e2e-api-1 Healthy 
+NAME                 IMAGE           COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+lst-e2e-api-1        lst-api:local   "dotnet Lst.Api.dll"     api        14 seconds ago   Up 5 seconds (healthy)    127.0.0.1:18443->8443/tcp
+lst-e2e-postgres-1   postgres:18.6   "docker-entrypoint.s…"   postgres   14 seconds ago   Up 14 seconds (healthy)   5432/tcp
+API: https://localhost:18443  (OpenAPI Development'ta: /openapi/v1.json)
+up exit=0

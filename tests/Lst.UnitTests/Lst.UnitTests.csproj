@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>Lst.UnitTests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Lst.Modules.Shipments\Lst.Modules.Shipments.csproj" />
+    <ProjectReference Include="..\..\src\Lst.Modules.Operations\Lst.Modules.Operations.csproj" />
+    <ProjectReference Include="..\..\src\Lst.Modules.Tracking\Lst.Modules.Tracking.csproj" />
+    <ProjectReference Include="..\Lst.Testing\Lst.Testing.csproj" />
+  </ItemGroup>
+</Project>
