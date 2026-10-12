@@ -144,15 +144,15 @@ Diğer doğrulama betikleri (depo kökünden):
 | `scripts/source-fingerprint.ps1` | Kaynak durumunun parmak izi (git yokken sonuçların hangi kaynağa ait olduğunu kaydetmek için) |
 
 CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — `backend`, `web`, `e2e` işleri (yalnız `contents: read`, action'lar commit SHA ile sabit).
-Uzak koşular: [GitHub Actions](https://github.com/TCoderr/logistics-shipment-tracking/actions). 2026-10-12 (UTC+3) itibarıyla ilk uzak koşu
-(commit `d9ad35b`) `e2e` işinde **başarısız** oldu ve düzeltmeler sürüyor; geçen bir uzak koşu iddia edilmez, güncel durum Actions sayfasındadır.
-Yereldeki eşdeğer komutların sonuçları `docs/final-verification.md`'dedir; bunlar uzak CI sonucu değildir.
+Uzak CI: `3baf0c3` commit'i için [koşu 38183774213](https://github.com/TCoderr/logistics-shipment-tracking/actions/runs/38183774213) başarıyla
+tamamlandı (`backend`, `web` ve `e2e` işleri; 2026-10-12, UTC+3 tarihinde kontrol edildi). Bu ifade yalnız o commit'e bağlıdır: bu metni
+ekleyen commit dahil sonraki commit'ler için bir sonuç iddia edilmez. Güncel durum: [GitHub Actions](https://github.com/TCoderr/logistics-shipment-tracking/actions).
 
-`docs/final-verification.md` içindeki sonuçlar ve parmak izleri, yerel doğrulama sırasında kullanılan kaynak durumuna aittir. O belge depo push
-edilmeden önce yazılmıştır; içindeki "uzak CI çalıştırılmadı" ifadeleri o ana aittir. README'nin sonradan İngilizceye çevrilmesi (`README.md`
-İngilizce, Türkçe metin `README.tr.md`) yalnız belge değişikliğidir. Parmak izi betiği bu dosyaları da kapsadığı için güncel ağacın parmak izi
-kayıtlı değerlerle aynı değildir; testler çeviriden sonra yeniden koşulmamıştır ve kayıtlı sonuçlar güncel parmak izi üzerinde alınmış sonuçlar
-değildir.
+`docs/final-verification.md` içindeki sonuçlar ve parmak izleri yerel sonuçlardır; depo push edilmeden önce, o doğrulama sırasında kullanılan
+kaynak durumuna aittir (belgedeki "uzak CI çalıştırılmadı" ifadeleri o ana aittir). `3baf0c3` commit'i bundan sonradır: bu README'nin
+İngilizce çevirisini ekledi (Türkçe metin `README.tr.md`) ve `src/web/src` altında dört dosyayı değiştirdi (filtre gezinme düzeltmesi). Bu
+commit için kayıtlı doğrulamanın yerelde yeniden koşulduğuna dair bir kayıt yoktur; bu nedenle kayıtlı sonuçlar ve parmak izleri güncel
+ağacın sonuçları değildir, değişiklik yukarıdaki uzak koşuyla kapsanır.
 
 ## Migration
 

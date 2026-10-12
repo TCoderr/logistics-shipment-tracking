@@ -151,15 +151,15 @@ Other verification scripts (from the repository root):
 | `scripts/source-fingerprint.ps1` | Fingerprint of the source state (to record which source the results belong to when there is no git) |
 
 CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — `backend`, `web`, `e2e` jobs (`contents: read` only, actions pinned by commit SHA).
-Remote runs: [GitHub Actions](https://github.com/TCoderr/logistics-shipment-tracking/actions). As of 2026-10-12 (UTC+3), the first remote run
-(commit `d9ad35b`) **failed** in the `e2e` job and fixes are in progress; no passing remote run is claimed here, and the Actions page shows the
-current state. The results of the equivalent local commands are in `docs/final-verification.md`; they are not remote CI results.
+Remote CI: [run 38183774213](https://github.com/TCoderr/logistics-shipment-tracking/actions/runs/38183774213) on commit `3baf0c3` completed
+successfully (`backend`, `web` and `e2e` jobs; checked 2026-10-12, UTC+3). The statement is tied to that commit: no result is claimed for
+later commits, including the one that adds this text. Current state: [GitHub Actions](https://github.com/TCoderr/logistics-shipment-tracking/actions).
 
-The results and fingerprints in `docs/final-verification.md` belong to the source state that was used during the local verification. That
-document was written before the repository was pushed; its "remote CI was not run" statements describe that moment. The later translation of
-this README into English (`README.md` in English, the Turkish text in `README.tr.md`) is a documentation-only change. Because the fingerprint
-script also covers these files, the fingerprint of the current tree is not the same as the recorded values; the tests were not re-run after the
-translation, and the recorded results are not results obtained on the current fingerprint.
+The results and fingerprints in `docs/final-verification.md` are local results and belong to the source state that was used during that
+verification, before the repository was pushed (its "remote CI was not run" statements describe that moment). Commit `3baf0c3` came later:
+it added the English translation of this README (Turkish text in `README.tr.md`) and changed four files under `src/web/src` (filter
+navigation fix). No local re-run of the recorded verification is on record for that commit, so the recorded results and fingerprints are
+not results for the current tree; the change is covered by the remote run above.
 
 ## Migrations
 
